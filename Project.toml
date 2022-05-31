@@ -1,0 +1,13 @@
+name = "Spike"
+uuid = "42877622-aead-43d6-a499-1ea554bdc28d"
+authors = ["Fabian Schneider"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
