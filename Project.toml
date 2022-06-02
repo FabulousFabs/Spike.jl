@@ -3,6 +3,9 @@ uuid = "42877622-aead-43d6-a499-1ea554bdc28d"
 authors = ["Fabian Schneider"]
 version = "0.1.0"
 
+[deps]
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+
 [compat]
 julia = "1"
 

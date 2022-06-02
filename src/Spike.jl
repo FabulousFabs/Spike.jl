@@ -1,12 +1,12 @@
 module Spike
 
+include("Magic.jl");
 include("Model.jl");
 include("Neurons.jl");
 
-function greet_Spike()
-    "Hello!";
-end
+export SpikeObject, cast_magic;
+export Model;
+export NeuronGroup;
 
-export greet_Spike;
 
 end
