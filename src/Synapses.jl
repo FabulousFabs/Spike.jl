@@ -1,3 +1,7 @@
+"""
+
+"""
+
 using Parameters;
 
 include("Magic.jl");

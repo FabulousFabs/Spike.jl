@@ -21,14 +21,14 @@ __cast_magic = false;
 
 function cast_magic()
     """
-    Enables creation of a magic network that will be built from module-Main's global scope. This 
+    Enables creation of a magic network that will be built from the module's global scope. This 
     should always be called when trying to utilise magic networks.
     """
 
     global __cast_magic = true;
 end
 
-function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)
+function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)::Vector{Symbol}
     """
     Collects all magic objects from the module. This is an internal function and should not
     be called manually.
@@ -53,10 +53,17 @@ function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::M
     cols;
 end
 
-function create_magic_model()
+function create_magic_model(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)::Model
     """
     Creates a model from all available magic objects that have corresponding vectorised forms in the standard
     model structure. This is an internal function and should not be called manually.
+
+    INPUTS:
+        magic_obj::DataType     -   DataType that identifies magic objects. (default = SpikeObject)
+        magic_tar::Module       -   Module where magic is utilised. (default = Main)
+
+    OUTPUTS:
+        model::Model    -   The magic network.
     """
 
     global __cast_magic;
@@ -78,13 +85,20 @@ function create_magic_model()
         end
     end
 
-    magic_objs::Vector{Symbol} = collect_magic_objects();
+    magic_objs::Vector{Symbol} = collect_magic_objects(; magic_obj = magic_obj, magic_tar = magic_tar);
 
     for obj::Symbol ∈ magic_objs
-        indx::Vector{Int} = findall(x -> x == Vector{typeof(getproperty(Main, obj))}, magic_typs);
+        indx::Vector{Int} = findall(x -> x == Vector{typeof(getproperty(magic_tar, obj))}, magic_typs);
 
         @assert size(indx, 1) > 0 "Spike::Magic::build_magic(): A magic object was found that has no vector-type correspondence with Spike::Model::Model().";
         @assert size(indx, 1) == 1 "Spike::Magic::build_magic(): A magic object was found that has multiple vector-type correspondences with Spike::Model::Model().";
+
+        #=
+        @TODO:
+        something we could do here is use Dict{Symbol, SpikeObject} for these containers
+        and then set the key by the symbol such that we can easily load models into the 
+        namespaces as well. maybe?
+        =#
 
         push!(getproperty(model, magic_toks[indx[1]]), getproperty(Main, obj));
     end
