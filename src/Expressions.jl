@@ -18,6 +18,7 @@ See also: Spike::Expressions::categorise_subexpressions()
 
 const __regex_subexpression_eq_norm = r"([a-zA-Z0-9\_]+)\_t";
 const __regex_subexpression_eq_diff = r"d([a-zA-Z0-9\_]+)\_dt";
+const __regex_subexpression_eq_assi = r"([a-zA-Z0-9\_]+)";
 
 function categorise_subexpressions(expr::Expr)::Tuple{Dict{Symbol, Expr}, Dict{Symbol, Expr}}
     """
@@ -64,6 +65,9 @@ function categorise_subexpressions(expr::Expr)::Tuple{Dict{Symbol, Expr}, Dict{S
                     eqs_diff[Meta.parse(match(__regex_subexpression_eq_diff, str_sy)[1])] = sub_expr.args[i];
                 elseif occursin(__regex_subexpression_eq_norm, str_sy) == true
                     eqs_norm[Meta.parse(match(__regex_subexpression_eq_norm, str_sy)[1])] = sub_expr.args[i];
+                elseif occursin(__regex_subexpression_eq_assi, str_sy) == true
+                    x::Any = sub_expr.args[i];
+                    eqs_norm[Meta.parse(match(__regex_subexpression_eq_assi, str_sy)[1])] = :($x * 1);
                 else
                     @assert false "Spike::Expressions::categorise_subexpressions(): Could not categorise subexpression:\n" * str_sy * "\nIs this a parameter instead?";
                 end

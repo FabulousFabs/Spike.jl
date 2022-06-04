@@ -6,6 +6,7 @@ at runtime, and presets of typically used neurons.
 using Parameters;
 
 include("Magic.jl");
+include("Solvers.jl");
 
 @with_kw mutable struct NeuronGroup <: SpikeObject
     """
@@ -14,47 +15,96 @@ include("Magic.jl");
     writing expressions yourself (unless that is explicitly required).
 
     INPUTS:
-        N::Int                          -   Number of neurons in group
-        eq::Expr                        -   Equation determining the behaviour of neurons in this group.
-        thr::Expr                       -   Condition for determining events. (default = :(v > v_th))
-        reset::Expr                     -   Reset rule after events. (default = :(v = v_reset))
-        method::String                  -   Method used for differentiating. (default = "rk2")
-        parameters::Dict{Symbol, Any}   -   All parameters for all neurons. (default = Dict())
+        N::Int                                          -   Number of neurons in group
+        eq::Expr                                        -   Equation determining the behaviour of neurons in this group.
+        method::Function                                -   Function to use for solving differnetial equations. See Spike::Solvers.
+        parameters::Dict{Symbol, Any}                   -   All parameters for all neurons.
+        events::Dict{Symbol, Tuple{Expr, Expr}}         -   Event specifications in the form of events = Dict(:name => (:(condition), :(effect;))).
+        __built::Bool                                   -   (Internal) Has this model been built? (default = false)
+        __normeqs::Dict{Symbol, Expr}                   -   (Internal) Built equations. (default = Dict())
+        __diffeqs::Dict{Symbol, Expr}                   -   (Internal) Built differential equations. (default = Dict())
+        __eventeqs::Dict{Symbol, Dict{Symbol, Expr}}    -   (Internal) Built event equations. (defualt = Dict())
+        __eventlog::Dict{Symbol, Vector{Bool}}          -   (Internal) Events at runtime. (default = Dict())
     """
 
     N::Int
     eq::Expr
-    thr::Expr = :(v > v_th)
-    reset::Expr = :(v = v_reset)
-    method::String = "rk2"
-    parameters::Dict{Symbol, Any} = Dict()
+    method::Function
+    parameters::Dict{Symbol, Any}
+    events::Dict{Symbol, Tuple{Expr, Expr}}
 
     __built::Bool = false
     __normeqs::Dict{Symbol, Expr} = Dict()
     __diffeqs::Dict{Symbol, Expr} = Dict()
+    __eventeqs::Dict{Symbol, Dict{Symbol, Expr}} = Dict()
+    __eventlog::Dict{Symbol, Vector{Bool}} = Dict()
 end
 
-function NeuronGroup_update(; neurons::NeuronGroup, dt::Float64)
+function step(; neurons::NeuronGroup, dt::Float64, t::Float64)::NeuronGroup
+    """
+    Performs one time step for all the equations specified for a NeuronGroup. Note that this includes
+    both state updates as well as event checks and logging.
+
+    INPUTS:
+        neuron::NeuronGroup     -   NeuronGroup to perform a step on.
+        dt::Float64             -   Time step size.
+        t::Float64              -   Current time.
+    
+    OUTPUTS:
+        neuron::NeuronGroup     -   Self
     """
 
-    """
+    neurons.parameters[:N] = neurons.N;
+    neurons.parameters[:t] = t;
+    neurons.parameters[:dt] = dt;
 
+    @fastmath for eq::Pair{Symbol, Expr} ∈ neurons.__normeqs
+        neurons.parameters[eq[1]] = eval(interpolate_from_dict(eq[2], neurons.parameters));
+    end
 
+    @fastmath for eq::Pair{Symbol, Expr} ∈ neurons.__diffeqs
+        neurons.parameters[eq[1]] = neurons.method(sym = eq[1], eq = eq[2], par = neurons.parameters, dt = dt, t = t);
+    end
+
+    @fastmath for event::Pair{Symbol, Dict{Symbol, Expr}} ∈ neurons.__eventeqs
+        neurons.__eventlog[event[1]] = eval(interpolate_from_dict(neurons.events[event[1]][1], neurons.parameters));
+
+        if any(neurons.__eventlog[event[1]])
+            ps::Dict{Symbol, Any} = Dict()
+
+            for p::Pair{Symbol, Any} ∈ neurons.parameters
+                if size(p[2], 1) > 1
+                    ps[p[1]] = p[2][neurons.__eventlog[event[1]]];
+                else
+                    ps[p[1]] = p[2];
+                end
+            end
+
+            for eq::Pair{Symbol, Expr} ∈ event[2]
+                ps[eq[1]] = neurons.parameters[eq[1]][neurons.__eventlog[event[1]]] = eval(interpolate_from_dict(eq[2], ps));
+            end
+        end
+    end
+
+    neurons;
 end
 
 function LIF(; N::Int = 1, normalised = false)::NeuronGroup
     """
-    
+
     """
 
     if normalised == false
         return NeuronGroup(N = N, 
                            eq = :(dv_dt = (.-(v .- E_L) .+ R .* I) ./ 𝜏_m;
-                                  I_t = .-(v .- E_L)), 
+                                  I_t = 25.0 .+ 25.0 .* sin(2*π*t) .* ones(N)),
+                           method = rk2,
+                           events = Dict(:spike => (:(v .> v_th), :(v = v_reset;))),
                            parameters = Dict(:v => -70.5 * ones(N), 
+                                             :v_th => -55.0 * ones(N),
+                                             :v_reset => -75.5 * ones(N),
                                              :E_L => -70.5 * ones(N), 
-                                             :R => 1.0 * ones(N),
-                                             :I => 0.0 * ones(N),
+                                             :R => 10.0 * ones(N),
                                              :𝜏_m => 10.0 * ones(N)));
     end
 
