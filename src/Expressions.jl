@@ -24,7 +24,7 @@ function categorise_subexpressions(expr::Expr)::Tuple{Dict{Symbol, Expr}, Dict{S
     """
     Takes a set of equations (an expression) and categorises by whether or not they need to be
     differentiated at run time. Currently, all equations are implicitly interpreted with respect
-    to time. Exemplary syntax:
+    to time. Typical syntax:
 
     ```
         :(I_t = A ./ 2 + A ./ 2 .* sin(2*π*t);

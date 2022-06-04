@@ -40,7 +40,7 @@ include("Solvers.jl");
     __eventlog::Dict{Symbol, Vector{Bool}} = Dict()
 end
 
-function step(; neurons::NeuronGroup, dt::Float64, t::Float64)::NeuronGroup
+@fastmath function step(neurons::NeuronGroup; dt::Float64, t::Float64)::NeuronGroup
     """
     Performs one time step for all the equations specified for a NeuronGroup. Note that this includes
     both state updates as well as event checks and logging.
@@ -53,20 +53,24 @@ function step(; neurons::NeuronGroup, dt::Float64, t::Float64)::NeuronGroup
     OUTPUTS:
         neuron::NeuronGroup     -   Self
     """
-
+    
+    # update general parameters
     neurons.parameters[:N] = neurons.N;
     neurons.parameters[:t] = t;
     neurons.parameters[:dt] = dt;
-
-    @fastmath for eq::Pair{Symbol, Expr} ∈ neurons.__normeqs
+    
+    # solve normal equations
+    for eq::Pair{Symbol, Expr} ∈ neurons.__normeqs
         neurons.parameters[eq[1]] = eval(interpolate_from_dict(eq[2], neurons.parameters));
     end
-
-    @fastmath for eq::Pair{Symbol, Expr} ∈ neurons.__diffeqs
+    
+    # solve differential equations
+    for eq::Pair{Symbol, Expr} ∈ neurons.__diffeqs
         neurons.parameters[eq[1]] = neurons.method(sym = eq[1], eq = eq[2], par = neurons.parameters, dt = dt, t = t);
     end
 
-    @fastmath for event::Pair{Symbol, Dict{Symbol, Expr}} ∈ neurons.__eventeqs
+    # evaluate any events and their effects
+    for event::Pair{Symbol, Dict{Symbol, Expr}} ∈ neurons.__eventeqs
         neurons.__eventlog[event[1]] = eval(interpolate_from_dict(neurons.events[event[1]][1], neurons.parameters));
 
         if any(neurons.__eventlog[event[1]])
