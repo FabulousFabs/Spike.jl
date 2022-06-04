@@ -8,6 +8,8 @@ using Parameters;
 
 include("Neurons.jl");
 include("Synapses.jl");
+include("Operations.jl");
+include("Monitors.jl");
 include("Expressions.jl");
 
 @fastmath function build(target::NeuronGroup)::NeuronGroup
@@ -120,5 +122,65 @@ end
     target.__N = size(target.__i, 1);
     target.__built = true;
 
+    target;
+end
+
+function build(target::Operation)::Operation
+    """
+    Builds an operation into the network that is executed at a specified time.
+
+    INPUTS:
+        target::Operation       -   Operation to build.
+    
+    OUTPUTS:
+        target::Operation       -   Built operation.
+    """
+
+    # check cycle
+    @assert target.cycle ∈ ["pre", "post"] "Spike::Build::build(::Operation): Received unsupported value for cycle = `" * target.cycle * ". Allowed = [pre, post].`";
+
+    # check timing
+    @assert target.every >= 1e-3 "Spike::Build::build(::Operation): Received unsupported value for every = `" * string(target.every) * "`. Allowed >= 1e-3.";
+    
+    # finalise
+    target.__built = true;
+    target;
+end
+
+function build(target::StateMonitor)::StateMonitor
+    """
+    Builds a StateMonitor into the network that is checked periodically.
+
+    INPUTS:
+        target::StateMonitor    -   StateMonitor to build.
+    
+    OUTPUTS:
+        target::StateMonitor    -   Built monitor.
+    """
+    
+    # check object type
+    @assert typeof(target.obj) ∈ [NeuronGroup, Synapses] "Spike::Build::build(::StateMonitor): Received unsupported obj of type `" * string(typeof(target.obj)) * "`. Allowed [NeuronGroup, Synapses].";
+
+    # check timing
+    @assert target.every >= 1e-3 "Spike::Build::build(::StateMonitor): Received unsupported value for every = `" * string(target.every) * "`. Allowed >= 1e-3.";
+
+    # finalise
+    target.__built = true;
+    target;
+end
+
+function build(target::EventMonitor)::EventMonitor
+    """
+    Builds an EventMonitor into the network.
+
+    INPUTS:
+        target::EventMonitor    -   EventMonitor to build.
+
+    OUTPUTS:
+        target::EventMonitor    -   Built monitor.
+    """
+
+    # finalise
+    target.__built = true;
     target;
 end
