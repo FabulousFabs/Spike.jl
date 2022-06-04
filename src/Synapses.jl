@@ -1,5 +1,6 @@
 """
-
+Provides the main structure for Synapses as well as standard operations to
+be executed at runtime.
 """
 
 using Parameters;
@@ -9,19 +10,43 @@ include("Solvers.jl");
 
 @with_kw mutable struct Synapses <: SpikeObject
     """
-    
+    Main structure for creating synapses between NeuronGroups. Note that both cond::Expr and 
+    prob::Float64 may be used complemantarily (or left as is to default to full connections).
+
+    INPUTS:
+        pre::NeuronGroup                                -   Presynaptic neuron group.
+        post::NeuronGroup                               -   Postsynaptic neuron group.
+        cond::Expr                                      -   Conditional expression for building connectivity matrix. (default = :())
+        prob::Float64                                   -   Probability of realising a potential entry in connectivity matrix. (default = 1.0)
+        eq::Expr                                        -   Equation determining the behaviour of the synapses.
+        method::Function                                -   Function to use for solving differential equations. See Spike::Solvers.
+        parameters::Dict{Symbol, Any}                   -   Parameter pre-specifications; either func where func(N) is valid or ::Number.
+        on_pre::Dict{Symbol, Expr}                      -   Hooks into presynaptic events and their effects (e.g., Dict(:spike => :(post_I = post_I .+ w;))).
+        on_post::Dict{Symbol, Expr}                     -   Hooks into postsynaptic events and their effects (e.g., Dict(:spike => :(pre_f_t_f = t;))).
+        __built::Bool                                   -   (Internal) Have these synapses been built? (default = false)
+        __parameters::Dict{Symbol, Any}                 -   (Internal) Full parameters after building model. (default = Dict())
+        __normeqs::Dict{Symbol, Expr}                   -   (Internal) Built equations. (default = Dict())
+        __diffeqs::Dict{Symbol, Expr}                   -   (Internal) Built differential equations. (default = Dict())
+        __preeqs::Dict{Symbol, Dict{Symbol, Expr}}      -   (Internal) Built presynaptic event equations. (default = Dict())
+        __posteqs::Dict{Symbol, Dict{Symbol, Expr}}     -   (Internal) Built postsynaptic event equations. (default = Dict())
+        __M_pre::Vector{Vector{Int}}                    -   (Internal) Built forwards connectivity matrix. (default = Dict())
+        __M_post::Vector{Vector{Int}}                   -   (Internal) Built backwards connectivity matrix. (default = Dict())
+        __N::Int                                        -   (Internal) Built number of synapses.
+        __i::Vector{Int}                                -   (Internal) Built i-th index of every synapse, indicating presynaptic neuron.
+        __j::Vector{Int}                                -   (Internal) Built j-th index of every synapse, indicating postsynaptic neuron.
     """
 
     pre::NeuronGroup
     post::NeuronGroup
     cond::Expr = :()
-    prob::Float64 = 0.0
+    prob::Float64 = 1.0
     eq::Expr = :()
     method::Function = rk2
     parameters::Dict{Symbol, Any} = Dict()
     on_pre::Dict{Symbol, Expr} = Dict()
     on_post::Dict{Symbol, Expr} = Dict()
 
+    __built::Bool = false
     __parameters::Dict{Symbol, Any} = Dict()
     __normeqs::Dict{Symbol, Expr} = Dict()
     __diffeqs::Dict{Symbol, Expr} = Dict()
@@ -34,13 +59,18 @@ include("Solvers.jl");
     __j::Vector{Int} = Int[];
 end
 
-macro add_prefix_to(prefix, symbol)
-    return :(eval(Meta.parse(":" * $prefix * string($symbol))))
-end
-
-function step(synapses::Synapses; dt::Float64, t::Float64)
+@fastmath function step(synapses::Synapses; dt::Float64, t::Float64)::Synapses
     """
+    Performs one time step for all equations specified for synapses. Note that this also
+    includes state updates, and event hooks and effects.
 
+    INPUTS:
+        synapses::Synapses      -   Synapses to perform step on.
+        dt::Float64             -   Time step size.
+        t::Float64              -   Current time.
+    
+    OUTPUTS:
+        synapses::Synapses      -   Self
     """
 
     # update general parameters
@@ -161,4 +191,6 @@ function step(synapses::Synapses; dt::Float64, t::Float64)
             end
         end
     end
+
+    synapses;
 end

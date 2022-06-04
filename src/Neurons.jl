@@ -17,7 +17,7 @@ include("Solvers.jl");
     INPUTS:
         N::Int                                          -   Number of neurons in group
         eq::Expr                                        -   Equation determining the behaviour of neurons in this group.
-        method::Function                                -   Function to use for solving differnetial equations. See Spike::Solvers.
+        method::Function                                -   Function to use for solving differential equations. See Spike::Solvers.
         parameters::Dict{Symbol, Any}                   -   All parameters for all neurons.
         events::Dict{Symbol, Tuple{Expr, Expr}}         -   Event specifications in the form of events = Dict(:name => (:(condition), :(effect;))).
         __built::Bool                                   -   (Internal) Has this model been built? (default = false)
