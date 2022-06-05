@@ -6,7 +6,6 @@ at runtime, and presets of typically used neurons.
 using Parameters;
 
 include("Magic.jl");
-include("Solvers.jl");
 
 @with_kw mutable struct NeuronGroup <: SpikeObject
     """

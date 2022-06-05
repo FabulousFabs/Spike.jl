@@ -78,7 +78,7 @@ end
         target.__posteqs[event_post[1]], _ = categorise_subexpressions(event_post[2]);
     end
 
-    # create fully connectivity vectors
+    # create full connectivity vectors
     pre_N::Int, post_N::Int = (target.pre.N, target.post.N);
     i::Vector{Int}, j::Vector{Int} = (repeat(1:pre_N, inner = post_N), repeat(1:post_N, outer = pre_N));
     mask::Vector{Bool} = ones(size(i, 1));
@@ -92,20 +92,20 @@ end
 
     # apply probabilistic mask to vectors
     if target.prob > 0.0 && target.prob < 1.0
-        mask = rand(size(i, 1)) .> target.prob;
+        mask = rand(size(i, 1)) .> (1 - target.prob);
         i, j = (i[mask], j[mask]);
     end
 
     # set final connectivity vectors
     target.__i, target.__j = (i, j);
 
-    # create empty forwards connectivity matrix
+    # create empty forwards connectivity vectors
     target.__M_pre = Vector{Vector{Int}}(undef, target.pre.N);
     for pre_i::Int ∈ 1:size(target.__M_pre, 1)
         target.__M_pre[pre_i] = Int[];
     end
 
-    # create empty backwards connectivity matrix
+    # create empty backwards connectivity vectors
     target.__M_post = Vector{Vector{Int}}(undef, target.post.N);
     for post_i::Int ∈ 1:size(target.__M_post, 1)
         target.__M_post[post_i] = Int[];
@@ -128,10 +128,38 @@ end
         end
     end
 
-    # finalise
+    # setup constant internal parameters
     target.__N = size(target.__i, 1);
-    target.__built = true;
+    target.__parameters[:N] = target.__N;
+    target.__parameters[:pre_N] = target.pre.N;
+    target.__parameters[:post_N] = target.post.N;
 
+    # make renamed presynaptic parameters available
+    for par_pre::Pair{Symbol, Any} ∈ target.pre.parameters
+        alias::Symbol = Meta.parse("pre_" * string(par_pre[1]));
+        if isa(par_pre[2], Vector)
+            target.__parameters[alias] = par_pre[2][target.__i];
+        elseif isa(par_pre[2], Number)
+            target.__parameters[alias] = par_pre[2] .* ones(target.__N);
+        else
+            @assert false "Spike::Build::build(::Synapses): Could not broadcast parameter `" * string(alias) * "` of unsuppoted type `" * string(typeof(par_pre[2])) * "`.";
+        end
+    end
+
+    # make renamed postsynaptic parameters available
+    for par_post::Pair{Symbol, Any} ∈ target.post.parameters
+        alias::Symbol = Meta.parse("post_" * string(par_post[1]));
+        if isa(par_post[2], Vector)
+            target.__parameters[alias] = par_post[2][target.__j];
+        elseif isa(par_post[2], Number)
+            target.__parameters[alias] = par_post[2] .* ones(target.__N);
+        else
+            @assert false "Spike::Build::build(::Synapses): Could not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`.";
+        end
+    end
+
+    # finalise
+    target.__built = true;
     target;
 end
 

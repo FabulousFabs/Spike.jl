@@ -71,16 +71,16 @@ end
     
     OUTPUTS:
         synapses::Synapses      -   Self
-    
-    @TODO: Rewrite synaptic event hooks for performance gains.
     """
-
+    
+    # update time parameters
+    synapses.__parameters[:t] = t;
+    synapses.__parameters[:dt] = dt;
+    
     # update general parameters
     synapses.__parameters[:N] = synapses.__N;
     synapses.__parameters[:pre_N] = synapses.pre.N;
     synapses.__parameters[:post_N] = synapses.post.N;
-    synapses.__parameters[:t] = t;
-    synapses.__parameters[:dt] = dt;
 
     # make renamed presynaptic parameters available
     for par_pre::Pair{Symbol, Any} ∈ synapses.pre.parameters
@@ -116,83 +116,80 @@ end
         synapses.__parameters[eq[1]] = synapses.method(sym = eq[1], eq = eq[2], par = synapses.__parameters, dt = dt, t = t);
     end
 
-    # evaluate pre-synaptic events that synapses are sensitive to
+    # evaluate pre-synaptic events
     for preeq::Pair{Symbol, Dict{Symbol, Expr}} ∈ synapses.__preeqs
-        if any(synapses.pre.__eventlog[preeq[1]])
-            mask_pre::Vector{Bool} = synapses.pre.__eventlog[preeq[1]];
-            
-            for eq::Pair{Symbol, Expr} ∈ preeq[2]
-                str_sym::String = string(eq[1]);
-                sender::Vector{Int} = collect(1:synapses.pre.N)[mask_pre];
-                receiver::Vector{Vector{Int}} = synapses.__M_pre[sender];
-                
-                for single::Tuple{Int, Vector{Int}} ∈ zip(sender, receiver)
-                    for rec::Int ∈ single[2]
-                        indx::Int = collect(1:synapses.__N)[(single[1] .== synapses.__i) .&& (rec .== synapses.__j)][1];
-                        ps::Dict{Symbol, Any} = Dict()
+        if !any(synapses.pre.__eventlog[preeq[1]])
+            continue;
+        end
 
-                        for p::Pair{Symbol, Any} ∈ synapses.__parameters
-                            if size(p[2], 1) > 1
-                                ps[p[1]] = synapses.__parameters[p[1]][indx];
-                            elseif size(p[2], 1) == 1
-                                ps[p[1]] = p[2];
-                            end
-                        end
+        presyn_mask::Vector{Bool} = synapses.pre.__eventlog[preeq[1]];
+        presyn_indx::Vector{Int} = collect(1:synapses.pre.N)[presyn_mask];
 
-                        in_sym::Symbol = Symbol();
-                        if length(str_sym) >= 6 && str_sym[1:5] == "post_"
-                            in_sym = Symbol(str_sym[6:end]);
-                            synapses.post.parameters[in_sym][rec] = eval(interpolate_from_dict(eq[2], ps));
-                            synapses.__parameters[eq[1]][rec .== synapses.__j] .= synapses.post.parameters[in_sym][rec];
-                        elseif length(str_sym >= 5) && str_sym[1:4] == "pre_"
-                            in_sym = Symbol(str_sym[5:end]);
-                            synapses.pre.parameters[in_sym][rec] = eval(interpolate_from_dict(eq[2], ps));
-                            synapses.__parameters[eq[1]][rec .== synapses.__i] .= synapses.pre.parameters[in_sym][rec];
-                        end
-                    end
-                end
+        synapse_indx::Vector{Int} = findall(∈(presyn_indx), synapses.__i);
+        synapse_mask::Vector{Bool} = falses(synapses.__N);
+        synapse_mask[synapse_indx] .= true;
+
+        possyn_indx::Vector{Int} = synapses.__j[synapse_indx];
+        possyn_mask::Vector{Bool} = falses(synapses.post.N);
+        possyn_mask[possyn_indx] .= true;
+
+        for eq::Pair{Symbol, Expr} ∈ preeq[2]
+            synapse_update::Vector{Float64} = synapse_mask .* (eval(interpolate_from_dict(eq[2], synapses.__parameters)) .- synapses.__parameters[eq[1]]);
+            target_str::String = String(eq[1]);
+            internal_sym::Symbol = Symbol();
+
+            if length(target_str) > 5 && target_str[1:5] == "post_"
+                internal_sym = Symbol(target_str[6:end]);
+                synapses.post.parameters[internal_sym][unique!(possyn_indx)] .+= [sum(synapse_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
+                synapses.__parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
+            elseif length(target_str) > 4 && target_str[1:4] == "pre_"
+                internal_sym = Symbol(target_str[5:end]);
+                synapses.pre.parameters[internal_sym][unique!(presyn_indx)] .+= [sum(synapses_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
+                synapses.__parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
+            else
+                internal_sym = eq[1];
+                synapses.__parameters[eq[1]][synapse_mask] .+= synapse_update;
             end
         end
     end
 
-    # evaluate post-synaptic events that synapses are sensitive to
+    # evaluate post-synaptic events
     for posteq::Pair{Symbol, Dict{Symbol, Expr}} ∈ synapses.__posteqs
-        if any(synapses.post.__eventlog[posteq[1]])
-            mask_post::Vector{Bool} = synapses.post.__eventlog[posteq[1]];
-            
-            for eq::Pair{Symbol, Expr} ∈ posteq[2]
-                str_sym::String = string(eq[1]);
-                sender::Vector{Int} = collect(1:synapses.post.N)[mask_post];
-                receiver::Vector{Vector{Int}} = synapses.__M_post[sender];
-                
-                for single::Tuple{Int, Vector{Int}} ∈ zip(sender, receiver)
-                    for rec::Int ∈ single[2]
-                        indx::Int = collect(1:synapses.__N)[(single[1] .== synapses.__j) .&& (rec .== synapses.__i)][1];
-                        ps::Dict{Symbol, Any} = Dict()
+        if !any(synapses.post.__eventlog[posteq[1]])
+            continue;
+        end
 
-                        for p::Pair{Symbol, Any} ∈ synapses.__parameters
-                            if size(p[2], 1) > 1
-                                ps[p[1]] = synapses.__parameters[p[1]][indx];
-                            elseif size(p[2], 1) == 1
-                                ps[p[1]] = p[2];
-                            end
-                        end
+        possyn_mask::Vector{Bool} = synapses.post.__eventlog[posteq[1]];
+        possyn_indx::Vector{Int} = collect(1:synapses.post.N)[possyn_mask];
 
-                        in_sym::Symbol = Symbol();
-                        if length(str_sym) >= 6 && str_sym[1:5] == "post_"
-                            in_sym = Symbol(str_sym[6:end]);
-                            synapses.post.parameters[in_sym][rec] = eval(interpolate_from_dict(eq[2], ps));
-                            synapses.__parameters[eq[1]][rec .== synapses.__j] .= synapses.post.parameters[in_sym][rec];
-                        elseif length(str_sym >= 5) && str_sym[1:4] == "pre_"
-                            in_sym = Symbol(str_sym[5:end]);
-                            synapses.pre.parameters[in_sym][rec] = eval(interpolate_from_dict(eq[2], ps));
-                            synapses.__parameters[eq[1]][rec .== synapses.__i] .= synapses.pre.parameters[in_sym][rec];
-                        end
-                    end
-                end
+        synapse_indx::Vector{Int} = findall(∈(possyn_indx), synapses.__j);
+        synapse_mask::Vector{Bool} = falses(synapses.__N);
+        synapse_mask[synapse_indx] .= true;
+
+        presyn_indx::Vector{Int} = synapses.__i[synapse_indx];
+        presyn_mask::Vector{Bool} = falses(synapses.pre.N);
+        presyn_mask[presyn_indx] .= true;
+        
+        for eq::Pair{Symbol, Expr} ∈ posteq[2]
+            synapse_update::Vector{Float64} = synapse_mask .* (eval(interpolate_from_dict(eq[2], synapses.__parameters)) .- synapses.__parameters[eq[1]]);
+            target_str::String = String(eq[1]);
+            internal_sym::Symbol = Symbol();
+
+            if length(target_str) > 5 && target_str[1:5] == "post_"
+                internal_sym = Symbol(target_str[6:end]);
+                synapses.post.parameters[internal_sym][unique!(possyn_indx)] .+= [sum(synapse_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
+                synapses.__parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
+            elseif length(target_str) > 4 && target_str[1:4] == "pre_"
+                internal_sym = Symbol(target_str[5:end]);
+                synapses.pre.parameters[internal_sym][unique!(presyn_indx)] .+= [sum(synapses_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
+                synapses.__parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
+            else
+                internal_sym = eq[1];
+                synapses.__parameters[eq[1]][synapse_mask] .+= synapse_update;
             end
         end
     end
+
 
     synapses;
 end
