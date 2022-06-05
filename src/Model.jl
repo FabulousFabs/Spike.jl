@@ -96,7 +96,7 @@ end
                     if typeof(obj[1]) != Symbol || !isa(obj[2], SpikeObject) || typeof(obj[2]) == Operation
                         continue;
                     end
-    
+                    
                     step(getproperty(model, tok)[obj[1]]; t = t, dt = dt);
                 end
             end
