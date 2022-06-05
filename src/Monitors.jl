@@ -8,9 +8,10 @@ include("Magic.jl");
 include("Neurons.jl");
 include("Synapses.jl");
 
-@with_kw mutable struct StateMonitor <: SpikeObject
-    """
-    Main structure for creating a StateMonitor.
+"""
+    StateMonitor <: SpikeObject
+
+Main structure for monitoring states of neurons or synapses.
 
     INPUTS:
         obj::Any                                    -   Object to be monitored.
@@ -20,8 +21,8 @@ include("Synapses.jl");
         states::Dict{Symbol, Array{Float64, 2}}     -   (Internal) State vectors. (default = Dict())
         __built::Bool                               -   (Internal) Has this monitor been built? (default = false)
         __last::Float64                             -   (Internal) Last check. (default = -Inf)
-    """
-
+"""
+@with_kw mutable struct StateMonitor <: SpikeObject
     obj::Any
     vars::Vector{Symbol}
     every::Float64 = 1e-3
@@ -33,19 +34,21 @@ include("Synapses.jl");
     __last::Float64 = -Inf
 end
 
-@fastmath function step(monitor::StateMonitor; dt::Float64, t::Float64)::StateMonitor
-    """
-    Perform a time step of the monitor.
+"""
+    step(monitor::StateMonitor; dt::Float64, 
+                                t::Float64)::StateMonitor
+    
+Performs one time step of the monitor. This is an internal function and should not be called manually.
 
     INPUTS:
         monitor::StateMonitor   -   StateMonitor to perform time step on.
         dt::Float64             -   Time step size.
         t::Float64              -   Current time.
-    
+
     OUTPUTS:
         monitor::StateMonitor   -   Self
-    """
-
+"""
+@fastmath function step(monitor::StateMonitor; dt::Float64, t::Float64)::StateMonitor
     # run step if in timing
     if monitor.__last + monitor.every <= t
         push!(monitor.t, t);
@@ -62,9 +65,10 @@ end
     monitor;
 end
 
-@with_kw mutable struct EventMonitor <: SpikeObject
-    """
-    Main structure for creating an EventMonitor.
+"""
+    EventMonitor <: SpikeObject
+
+Main structure for monitoring events.
 
     INPUTS:
         obj::NeuronGroup                    -   Object to be monitored.
@@ -72,8 +76,8 @@ end
         t::Vector{Float64}                  -   (Internal) Time vector. (default = Float64[])
         i::Vector{Int}                      -   (Internal) State vectors. (default = Int[])
         __built::Bool                       -   (Internal) Has this monitor been built? (default = false)
-    """
-
+"""
+@with_kw mutable struct EventMonitor <: SpikeObject
     obj::NeuronGroup
     event::Symbol = :spike
 
@@ -83,19 +87,13 @@ end
     __built::Bool = false
 end
 
+"""
+    step(monitor::EventMonitor; dt::Float64,
+                                t::Float64)::EventMonitor
+
+Performs one time step of the monitor. This is an internal fuction and should not be called manually.
+"""
 @fastmath function step(monitor::EventMonitor; dt::Float64, t::Float64)::EventMonitor
-    """
-    Perform a time step of the monitor.
-
-    INPUTS:
-        monitor::EventMonitor   -   EventMonitor to perform time step on.
-        dt::Float64             -   Time step size.
-        t::Float64              -   Current time.
-    
-    OUTPUTS:
-        monitor::EventMonitor   -   Self
-    """
-
     # collect events and log
     ids::Vector{Int} = collect(1:length(monitor.obj.__eventlog[monitor.event]))[monitor.obj.__eventlog[monitor.event]];
     append!(monitor.t, t .* ones(size(ids, 1)));

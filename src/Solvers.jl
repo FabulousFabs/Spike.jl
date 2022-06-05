@@ -2,9 +2,14 @@
 Provides functions for solving differential equations.
 """
 
-function rk2(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::Float64)::Any
-    """
-    Second order Runge-Kutta time stepper for differential equations.
+"""
+    rk2(; sym::Symbol, 
+          eq::Expr, 
+          par::Dict{Symbol, Any}, 
+          dt::Float64, 
+          t::Float64)::Any
+
+Second order Runge-Kutta time stepper for differential equations.
 
     INPUTS:
         sym::Symbol                 -   Symbol of the parameters to be differentiated.
@@ -12,19 +17,24 @@ function rk2(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::Fl
         par::Dict{Symbol, Any}      -   Paramters for the differential equation.
         dt::Float64                 -   Step size.
         t::Float64                  -   Time at step zero.
-    
+
     OUTPUTS:
         phi_n_plus_1::Any           -   Approximate value at step one.
-    """
-    
+"""
+function rk2(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::Float64)::Any
     par[sym] .+= (dt .* eval(interpolate_from_dict(eq, par))) ./ 2;
     par[:t] += dt ./ 2;
     par[sym] .+ (dt .* eval(interpolate_from_dict(eq, par)));
 end
 
-function euler(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::Float64)::Any
-    """
-    Euler's method for differential equations.
+"""
+    euler(; sym::Symbol, 
+            eq::Expr, 
+            par::Dict{Symbol, Any}, 
+            dt::Float64, 
+            t::Float64)::Any
+    
+Euler's method for differential equations.
 
     INPUTS:
         sym::Symbol                 -   Symbol of the parameters to be differentiated.
@@ -35,14 +45,19 @@ function euler(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::
     
     OUTPUTS:
         phi_n_plus_1::Any           -   Approximate value at step one.
-    """
-
+"""
+function euler(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::Float64)::Any
     par[sym] .+ (dt .* eval(interpolate_from_dict(eq, par)));
 end
 
-function heun(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::Float64)::Any
-    """
-    Heun's method for differential equations.
+"""
+    heun(; sym::Symbol, 
+           eq::Expr, 
+           par::Dict{Symbol, Any}, 
+           dt::Float64, 
+           t::Float64)::Any
+
+Heun's method for differential equations.
 
     INPUTS:
         sym::Symbol                 -   Symbol of the parameters to be differentiated.
@@ -50,11 +65,11 @@ function heun(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::F
         par::Dict{Symbol, Any}      -   Paramters for the differential equation.
         dt::Float64                 -   Step size.
         t::Float64                  -   Time at step zero.
-    
+
     OUTPUTS:
         phi_n_plus_1::Any           -   Approximate value at step one.
-    """
-
+"""
+function heun(; sym::Symbol, eq::Expr, par::Dict{Symbol, Any}, dt::Float64, t::Float64)::Any
     par_dy::Dict{Symbol, Any} = par;
     par_dy[:t] += dt;
     par_dy[sym] .+= dt .* eval(interpolate_from_dict(eq, par));

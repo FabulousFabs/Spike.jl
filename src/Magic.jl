@@ -16,23 +16,34 @@ More concretely, this allows for model specifications such as:
 whereby the model is collected from the global Main scope before being built and executed.
 """
 
+"""
+    SpikeObject
+
+Abstract type definition that enables look-up and matching of magic objects.
+"""
 abstract type SpikeObject end;
 
+"""
+    __cast_magic::Bool
+
+Internal variable to keep track of whether or not magic has been cast. Do not change this manually. Please use [`cast_magic`](@ref) instead.
+"""
 __cast_magic = false;
 
-function cast_magic()
-    """
-    Enables creation of a magic network that will be built from the module's global scope. This 
-    should always be called when trying to utilise magic networks.
-    """
+"""
+    cast_magic()
 
+Enables creation of a magic network that will be built from the module's global scope. This should always be called when trying to utilise magic networks.
+"""
+function cast_magic()
     global __cast_magic = true;
 end
 
-function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)::Vector{Symbol}
-    """
-    Collects all magic objects from the module. This is an internal function and should not
-    be called manually.
+"""
+    collect_magic_objects(; magic_obj::DataType = SpikeObject, 
+                            magic_tar::Module = Main)::Vector{Symbol}
+
+Collects all magic objects from the module. This is an internal function and should not be called manually.
 
     INPUTS:
         magic_obj::DataType     -   DataType that identifies magic objects. (default = SpikeObject)
@@ -40,8 +51,8 @@ function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::M
     
     OUTPUTS:
         cols::Vector{Symbol}    -   Vector of symbols of magic objects in module.
-    """
-
+"""
+function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)::Vector{Symbol}
     objs::Vector{Symbol} = names(magic_tar, all = true);
     cols::Vector{Symbol} = Symbol[];
 
@@ -60,10 +71,11 @@ function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::M
     cols;
 end
 
-function create_magic_model(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)::Model
-    """
-    Creates a model from all available magic objects that have corresponding vectorised forms in the standard
-    model structure. This is an internal function and should not be called manually.
+"""
+    create_magic_model(; magic_obj::DataType = SpikeObject, 
+                         magic_tar::Module = Main)::Model
+
+Creates a model from all available magic objects that have corresponding vectorised forms in the standard model structure. This is an internal function and should not be called manually.
 
     INPUTS:
         magic_obj::DataType     -   DataType that identifies magic objects. (default = SpikeObject)
@@ -71,8 +83,8 @@ function create_magic_model(; magic_obj::DataType = SpikeObject, magic_tar::Modu
 
     OUTPUTS:
         model::Model            -   The magic network.
-    """
-
+"""
+function create_magic_model(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)::Model
     global __cast_magic;
 
     @assert __cast_magic == true "Spike::Magic::build_magic(): Received call while no initial magic was cast.";

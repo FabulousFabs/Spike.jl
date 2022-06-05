@@ -12,12 +12,10 @@ include("Operations.jl");
 include("Monitors.jl");
 include("Build.jl");
 
-@with_kw mutable struct Model
-    """
-    Main structure for creating a model. Note that, for convenience, this structure does
-    not have to be created yourself. If you can provide adeqaute scope and have called
-    Spike::Magic::cast_magic() to start the scope, Spike::Model::run(; ...) will magically 
-    created the model for you (and return it after simulation).
+"""
+    Model
+
+Main structure for creating a model. Note that, for convenience, this structure does not have to be created yourself. If you can provide adequate scope and have called [`cast_magic`](@ref) to start the scope, [`run`](@ref) will magically  created the model for you (and return it after simulation).
 
     INPUTS:
         Neurons::Dict{Symbol, NeuronGroup}          -   All neuron groups in the model. (default = Dict())
@@ -26,8 +24,8 @@ include("Build.jl");
         StateMonitors::Dict{Symbol, StateMonitor}   -   All state monitors in the model. (default = Dict())
         EventMonitors::Dict{Symbol, EventMonitor}   -   All event monitors in the model. (default = Dict())
         verbose::Bool                               -   Verbose updates? (default = true)
-    """
-
+"""
+@with_kw mutable struct Model
     Neurons::Dict{Symbol, NeuronGroup} = Dict();
     Synapses::Dict{Symbol, Synapses} = Dict();
     Operations::Dict{Symbol, Operation} = Dict();
@@ -36,16 +34,19 @@ include("Build.jl");
     verbose::Bool = true;
 end
 
-function status(model::Model, status::String; e::String = "\n")
-    """
-    Logging function at runtime.
-    
+"""
+    status(model::Model,
+           status::String,
+           e::String = "\\n")
+
+Logging function at runtime.
+
     INPUTS:
         model::Model        -   The model object.
         status::String      -   The status.
         e::String           -   End-of-line characters.
-    """
-
+"""
+function status(model::Model, status::String; e::String = "\n")
     if model.verbose == false
         return;
     end
@@ -53,9 +54,11 @@ function status(model::Model, status::String; e::String = "\n")
     print(status * e);
 end
 
-@fastmath function run(model::Model; T::Float64, dt::Float64 = 1e-3)::Model
-    """
-    Main simulation entry point.
+"""
+    run(model::Model; T::Float64, 
+                      dt::Float64 = 1e-3)::Model
+
+Main entry point for simulations.
 
     INPUTS:
         model::Model    -   The model to run.
@@ -64,8 +67,8 @@ end
     
     OUTPUTS:
         model::Model    -   Self
-    """
-
+"""
+@fastmath function run(model::Model; T::Float64, dt::Float64 = 1e-3)::Model
     # build the model
     status(model, "Building model components...");
 
@@ -112,10 +115,14 @@ end
     model;
 end
 
-function run(; T::Float64, dt::Float64 = 1e-3, magic_obj::DataType = SpikeObject, magic_tar::Module = Main, verbose::Bool = true)::Model
-    """
-    Entry point for magic networks; creates the model and yields it
-    to simulation entry point.
+"""
+    run(; T::Float64, 
+          dt::Float64 = 1e-3, 
+          magic_obj::DataType = SpikeObject, 
+          magic_tar::Module = Main, 
+          verbose::Bool = true)::Model
+
+Entry point for magic networks. Creates the model and yields it to the simulation entry point.
 
     INPUTS:
         T::Float64              -   Total time to run the model for.
@@ -126,8 +133,8 @@ function run(; T::Float64, dt::Float64 = 1e-3, magic_obj::DataType = SpikeObject
     
     OUTPUTS:
         model::Model            -   Self
-    """
-
+"""
+function run(; T::Float64, dt::Float64 = 1e-3, magic_obj::DataType = SpikeObject, magic_tar::Module = Main, verbose::Bool = true)::Model
     # create a magic model
     model::Model = create_magic_model(; magic_obj = magic_obj, magic_tar = magic_tar);
     model.verbose = verbose;

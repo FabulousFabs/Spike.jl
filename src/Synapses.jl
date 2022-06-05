@@ -8,10 +8,10 @@ using Parameters;
 include("Magic.jl");
 include("Solvers.jl");
 
-@with_kw mutable struct Synapses <: SpikeObject
-    """
-    Main structure for creating synapses between NeuronGroups. Note that both cond::Expr and 
-    prob::Float64 may be used complemantarily (or left as is to default to full connections).
+"""
+    Synapses <: SpikeObject
+
+Main structure for creating synapses between NeuronGroups. Note that both `cond::Expr` and `prob::Float64` may be used complemantarily (or left as is to default to full connections).
 
     INPUTS:
         pre::NeuronGroup                                -   Presynaptic neuron group.
@@ -34,8 +34,8 @@ include("Solvers.jl");
         __N::Int                                        -   (Internal) Built number of synapses.
         __i::Vector{Int}                                -   (Internal) Built i-th index of every synapse, indicating presynaptic neuron.
         __j::Vector{Int}                                -   (Internal) Built j-th index of every synapse, indicating postsynaptic neuron.
-    """
-
+"""
+@with_kw mutable struct Synapses <: SpikeObject
     pre::NeuronGroup
     post::NeuronGroup
     cond::Expr = :()
@@ -59,10 +59,11 @@ include("Solvers.jl");
     __j::Vector{Int} = Int[];
 end
 
-@fastmath function step(synapses::Synapses; dt::Float64, t::Float64)::Synapses
-    """
-    Performs one time step for all equations specified for synapses. Note that this also
-    includes state updates, and event hooks and effects.
+"""
+    step(synapses::Synapses; dt::Float64,
+                             t::Float64)::Synapses
+
+Performs one time step for all equations specified for a group of synapses. Note that this also includes state updates as well as event hooks and effects.
 
     INPUTS:
         synapses::Synapses      -   Synapses to perform step on.
@@ -71,8 +72,8 @@ end
     
     OUTPUTS:
         synapses::Synapses      -   Self
-    """
-    
+"""
+@fastmath function step(synapses::Synapses; dt::Float64, t::Float64)::Synapses
     # update time parameters
     synapses.__parameters[:t] = t;
     synapses.__parameters[:dt] = dt;

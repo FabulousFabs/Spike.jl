@@ -3,45 +3,57 @@ Provides expression functionality to ease their use as equations in model specif
 """
 
 """
-Set of functions to allow for data to be supplied easily for evaluating expressions. Should
-be called as interpolate_from_dict(expr::Expr, data::Dict{Symbol, Any}).
-"""
+    interpolate_from_dict(expr::Expr, 
+                          dict::Dict{Symbol, Any})::Any
 
+Set of functions to allow for data to be supplied easily for evaluating expressions.
+"""
 interpolate_from_dict(expr::Expr, dict::Dict{Symbol, Any}) = Expr(expr.head, interpolate_from_dict.(expr.args, Ref(dict))...);
 interpolate_from_dict(expr::Symbol, dict::Dict{Symbol, Any}) = get(dict, expr, expr);
 interpolate_from_dict(expr::Any, dict::Dict{Symbol, Any}) = expr;
 
 """
-Constant regular expressions that define the syntax of normal and differential equations.
-See also: Spike::Expressions::categorise_subexpressions()
+    __regex_subexpression_eq_norm
+
+Regular expression that defines the syntax of normal equations in [`categorise_subexpressions`](@ref). This is an internal variable and should not be changed.
 """
+__regex_subexpression_eq_norm = r"([a-zA-Z0-9\_]+)\_t";
 
-const __regex_subexpression_eq_norm = r"([a-zA-Z0-9\_]+)\_t";
-const __regex_subexpression_eq_diff = r"d([a-zA-Z0-9\_]+)\_dt";
-const __regex_subexpression_eq_assi = r"([a-zA-Z0-9\_]+)";
+"""
+    __regex_subexpression_eq_diff
 
-function categorise_subexpressions(expr::Expr)::Tuple{Dict{Symbol, Expr}, Dict{Symbol, Expr}}
-    """
-    Takes a set of equations (an expression) and categorises by whether or not they need to be
-    differentiated at run time. Currently, all equations are implicitly interpreted with respect
-    to time. Typical syntax:
+Regular expression that defines the syntax of differential equations in [`categorise_subexpressions`](@ref). This is an internal variable and should not be changed.
+"""
+__regex_subexpression_eq_diff = r"d([a-zA-Z0-9\_]+)\_dt";
 
-    ```
-        :(I_t = A ./ 2 + A ./ 2 .* sin(2*π*t);
-          dv_dt = (.-(v .- v_rest) .+ I) ./ 𝜏))
-    ```
+"""
+    __regex_subexpression_eq_assi
 
-    which would indicate a regular function I(t) and a differential equation dv/dt for the model
-    at runtime.
+Regular expression that defines the syntax of assignments in [`categorise_subexpressions`](@ref). This is an internal variable and should not be changed.
+"""
+__regex_subexpression_eq_assi = r"([a-zA-Z0-9\_]+)";
+
+"""
+    categorise_subexpressions(expr::Expr)::Tuple{Dict{Symbol, Expr}, Dict{Symbol, Expr}}
+
+Takes a set of equations formulated as an expression and categorises by whether or not they need to be differentiated at runtime. Currently, all equations are implicitly interpreted with respect to time. Typical syntax of equations should be:
+
+```julia
+:(I_t = A ./ 2 .+ A ./ 2 .* sin(2 * π * t);
+  dv_dt = (.-(v .- v_rest) .+ I) ./ 𝜏;
+  A = rand(N);)
+```
+
+which would create a regular function I(t), a differential equation dv/dt and an assignment of A for the model at runtime.
 
     INPUTS:
         expr::Expr                                                              -   Expression to evaluate
     
     OUTPUTS:
         (eqs_norm, eqs_diff)::Tuple{Dict{Symbol, Expr}, Dict{Symbol, Expr}}     -   Tuple of normal and differential equations.
-    """
-
-    global __regex_subexpression_eq_norm, __regex_subexpression_eq_diff;
+"""
+function categorise_subexpressions(expr::Expr)::Tuple{Dict{Symbol, Expr}, Dict{Symbol, Expr}}
+    global __regex_subexpression_eq_norm, __regex_subexpression_eq_diff, __regex_subexpression_eq_assi;
 
     eqs_norm::Dict{Symbol, Expr} = Dict()
     eqs_diff::Dict{Symbol, Expr} = Dict() 

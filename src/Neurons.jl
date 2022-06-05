@@ -7,11 +7,10 @@ using Parameters;
 
 include("Magic.jl");
 
-@with_kw mutable struct NeuronGroup <: SpikeObject
-    """
-    Main structure for creating neurons. Note that, for convenience, you can often simply use
-    one of the auxiliary functions provided in this file (e.g., LIF(N = 10)) rather than re-
-    writing expressions yourself (unless that is explicitly required).
+"""
+    NeuronGroup <: SpikeObject
+
+Main structure for creating neurons. Note that, for convenience, you can often simply use one of the auxiliary functions provided in this file (e.g., [`LIF`](@ref)) rather than rewriting expressions yourself (unless that is explicitly required).
 
     INPUTS:
         N::Int                                          -   Number of neurons in group
@@ -24,8 +23,8 @@ include("Magic.jl");
         __diffeqs::Dict{Symbol, Expr}                   -   (Internal) Built differential equations. (default = Dict())
         __eventeqs::Dict{Symbol, Dict{Symbol, Expr}}    -   (Internal) Built event equations. (defualt = Dict())
         __eventlog::Dict{Symbol, Vector{Bool}}          -   (Internal) Events at runtime. (default = Dict())
-    """
-
+"""
+@with_kw mutable struct NeuronGroup <: SpikeObject
     N::Int
     eq::Expr
     method::Function
@@ -39,10 +38,11 @@ include("Magic.jl");
     __eventlog::Dict{Symbol, Vector{Bool}} = Dict()
 end
 
-@fastmath function step(neurons::NeuronGroup; dt::Float64, t::Float64)::NeuronGroup
-    """
-    Performs one time step for all the equations specified for a NeuronGroup. Note that this includes
-    both state updates as well as event checks and logging.
+"""
+    step(neurons::NeuronGroup; dt::Float64,
+                               t::Float64)::NeuronGroup
+
+Performs one time step for all the equations specified for a [`NeuronGroup`](@ref). Note that this includes both state updates as well as event checks and logging.
 
     INPUTS:
         neuron::NeuronGroup     -   NeuronGroup to perform a step on.
@@ -51,8 +51,8 @@ end
     
     OUTPUTS:
         neuron::NeuronGroup     -   Self
-    """
-    
+"""
+@fastmath function step(neurons::NeuronGroup; dt::Float64, t::Float64)::NeuronGroup
     # update general parameters
     neurons.parameters[:N] = neurons.N;
     neurons.parameters[:t] = t;
@@ -92,11 +92,20 @@ end
     neurons;
 end
 
-function LIF(; N::Int = 1, normalised = false)::NeuronGroup
-    """
+"""
+    LIF(; N::Int = 1, 
+          normalised::Bool = false)::NeuronGroup
 
-    """
+Shorthand to create standard Leaky Integrate-and-Fire neurons.
 
+    INPUTS:
+        N::Int                  -   Number of neurons (default = 1)
+        normalised::Bool        -   Should values be normalised rather than biological (i.e., spanning [0, 1])? (default = false)
+    
+    OUTPUTS:
+        neurons::NeuronGroup    -   LIF-group of neurons
+"""
+function LIF(; N::Int = 1, normalised::Bool = false)::NeuronGroup
     if normalised == false
         return NeuronGroup(N = N, 
                            eq = :(dv_dt = (.-(v .- E_L) .+ R .* I) ./ 𝜏_m;

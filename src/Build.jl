@@ -12,18 +12,18 @@ include("Operations.jl");
 include("Monitors.jl");
 include("Expressions.jl");
 
-@fastmath function build(target::NeuronGroup)::NeuronGroup
-    """
-    Builds a group of neurons such that their expressions may be evaluated
-    more directly and performs safety checks.
+"""
+    build(target::NeuronGroup)::NeuronGroup
+
+Builds a group of neurons such that their expressions may be evaluated more directly. Also performs safety checks. This is an internal functino and should not be called manually.
 
     INPUTS:
         target::NeuronGroup     -   Group of neurons to build.
-    
+
     OUTPUTS:
         target::NeuronGroup     -   Built group of neurons.
-    """
-    
+"""
+@fastmath function build(target::NeuronGroup)::NeuronGroup
     # don't rebuild
     if target.__built == true
         return target;
@@ -47,19 +47,18 @@ include("Expressions.jl");
     target;
 end
 
-@fastmath function build(target::Synapses)::Synapses
-    """
-    Builds synapses between two groups of neurons such that their equations can be
-    evaluated more directly, performs safety checks and evaluates the connectivity
-    matrix and, subsequently, internal parametrisation.
+"""
+    build(target::Synapses)::Synapses
+
+Builds synapses between two groups of neurons such that their equations can be evaluated more directly. Also performs safety checks and handles evaluation of connectivity matrices as well as internal parametrisation. This is an internal function and should not be called manually.
 
     INPUTS:
         target::Synapses    -   Synapses to build.
-    
+
     OUTPUTS:
         target::Synapses    -   Built group of synapses.
-    """
-
+"""
+@fastmath function build(target::Synapses)::Synapses
     # don't rebuild
     if target.__built == true
         return target;
@@ -163,17 +162,18 @@ end
     target;
 end
 
-function build(target::Operation)::Operation
-    """
-    Builds an operation into the network that is executed at a specified time.
+"""
+    build(target::Operation)::Operation
+
+Builds an operation into the model, which will be executed at prespecified intervals. This is an internal function and should not be called manually.
 
     INPUTS:
         target::Operation       -   Operation to build.
-    
+
     OUTPUTS:
         target::Operation       -   Built operation.
-    """
-
+"""
+function build(target::Operation)::Operation
     # don't rebuild
     if target.__built == true
         return target;
@@ -190,17 +190,18 @@ function build(target::Operation)::Operation
     target;
 end
 
-function build(target::StateMonitor)::StateMonitor
-    """
-    Builds a StateMonitor into the network that is checked periodically.
+"""
+    build(target::StateMonitor)::StateMonitor
+
+Builds a state monitor into the model that will be updated periodically. This is an internal function and should not be called manually.
 
     INPUTS:
         target::StateMonitor    -   StateMonitor to build.
     
     OUTPUTS:
         target::StateMonitor    -   Built monitor.
-    """
-
+"""
+function build(target::StateMonitor)::StateMonitor
     # don't rebuild
     if target.__built == true
         return target;
@@ -228,17 +229,18 @@ function build(target::StateMonitor)::StateMonitor
     target;
 end
 
-function build(target::EventMonitor)::EventMonitor
-    """
-    Builds an EventMonitor into the network.
+"""
+    build(target::EventMonitor)::EventMonitor
+
+Builds an event monitor into the model that will be updated as events occur. This is an internal function and should not be called manually.
 
     INPUTS:
         target::EventMonitor    -   EventMonitor to build.
 
     OUTPUTS:
         target::EventMonitor    -   Built monitor.
-    """
-
+"""
+function build(target::EventMonitor)::EventMonitor
     # don't rebuild
     if target.__built == true
         return target;
