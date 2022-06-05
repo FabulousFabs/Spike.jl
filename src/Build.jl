@@ -23,6 +23,11 @@ include("Expressions.jl");
     OUTPUTS:
         target::NeuronGroup     -   Built group of neurons.
     """
+    
+    # don't rebuild
+    if target.__built == true
+        return target;
+    end
 
     # build internal state expressions
     target.__normeqs, target.__diffeqs = categorise_subexpressions(target.eq);
@@ -54,6 +59,11 @@ end
     OUTPUTS:
         target::Synapses    -   Built group of synapses.
     """
+
+    # don't rebuild
+    if target.__built == true
+        return target;
+    end
 
     # build internal state equations
     target.__normeqs, target.__diffeqs = categorise_subexpressions(target.eq);
@@ -136,6 +146,11 @@ function build(target::Operation)::Operation
         target::Operation       -   Built operation.
     """
 
+    # don't rebuild
+    if target.__built == true
+        return target;
+    end
+
     # check cycle
     @assert target.cycle ∈ ["pre", "post"] "Spike::Build::build(::Operation): Received unsupported value for cycle = `" * target.cycle * ". Allowed = [pre, post].`";
 
@@ -157,6 +172,11 @@ function build(target::StateMonitor)::StateMonitor
     OUTPUTS:
         target::StateMonitor    -   Built monitor.
     """
+
+    # don't rebuild
+    if target.__built == true
+        return target;
+    end
     
     # check object type
     @assert typeof(target.obj) ∈ [NeuronGroup, Synapses] "Spike::Build::build(::StateMonitor): Received unsupported obj of type `" * string(typeof(target.obj)) * "`. Allowed [NeuronGroup, Synapses].";
@@ -179,6 +199,11 @@ function build(target::EventMonitor)::EventMonitor
     OUTPUTS:
         target::EventMonitor    -   Built monitor.
     """
+
+    # don't rebuild
+    if target.__built == true
+        return target;
+    end
 
     # finalise
     target.__built = true;

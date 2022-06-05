@@ -71,6 +71,8 @@ end
     
     OUTPUTS:
         synapses::Synapses      -   Self
+    
+    @TODO: Rewrite synaptic event hooks for performance gains.
     """
 
     # update general parameters

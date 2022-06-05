@@ -45,8 +45,14 @@ function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::M
     cols::Vector{Symbol} = Symbol[];
 
     for obj::Symbol ∈ objs
-        if isa(getproperty(magic_tar, obj), magic_obj) && obj != :ans
-            push!(cols, obj);
+        try 
+            if isa(getproperty(magic_tar, obj), magic_obj) && obj != :ans
+                push!(cols, obj);
+            end
+        catch exc
+            if !isa(exc, UndefVarError)
+                @assert false "Spike::Magic::collect_magic_objects(): Encountered an unexpected error of type `" * string(typeof(exc)) * "`:\n" * string(exc);
+            end
         end
     end
 
