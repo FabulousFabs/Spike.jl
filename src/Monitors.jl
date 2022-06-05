@@ -13,13 +13,13 @@ include("Synapses.jl");
     Main structure for creating a StateMonitor.
 
     INPUTS:
-        obj::Any                            -   Object to be monitored.
-        vars::Vector{Symbol}                -   Parameters to be monitored in object.
-        every::Float64                      -   Delay between calls. (default = 1e-3)
-        t::Vector{Float64}                  -   (Internal) Time vector. (default = Float64[])
-        states::Dict{Symbol, Vector{Any}}   -   (Internal) State vectors. (default = Dict())
-        __built::Bool                       -   (Internal) Has this monitor been built? (default = false)
-        __last::Float64                     -   (Internal) Last check. (default = -Inf)
+        obj::Any                                    -   Object to be monitored.
+        vars::Vector{Symbol}                        -   Parameters to be monitored in object.
+        every::Float64                              -   Delay between calls. (default = 1e-3)
+        t::Vector{Float64}                          -   (Internal) Time vector. (default = Float64[])
+        states::Dict{Symbol, Array{Float64, 2}}     -   (Internal) State vectors. (default = Dict())
+        __built::Bool                               -   (Internal) Has this monitor been built? (default = false)
+        __last::Float64                             -   (Internal) Last check. (default = -Inf)
     """
 
     obj::Any
@@ -27,7 +27,7 @@ include("Synapses.jl");
     every::Float64 = 1e-3
 
     t::Vector{Float64} = Float64[];
-    states::Dict{Symbol, Vector{Any}} = Dict()
+    states::Dict{Symbol, Array{Float64, 2}} = Dict()
 
     __built::Bool = false
     __last::Float64 = -Inf
@@ -47,19 +47,19 @@ end
     """
 
     # run step if in timing
-    if target.__last + target.every <= t
-        push!(target.t, t);
+    if monitor.__last + monitor.every <= t
+        push!(monitor.t, t);
 
-        for var::Symbol ∈ target.vars
-            if typeof(target.obj) == NeuronGroup
-                push!(target.states[var], target.obj.parameters[var]);
-            elseif typeof(target.obj) == Synapses
-                push!(target.states[var], target.obj.__parameters[var]);
+        for var::Symbol ∈ monitor.vars
+            if typeof(monitor.obj) == NeuronGroup
+                monitor.states[var] = cat(monitor.states[var], monitor.obj.parameters[var]; dims = 2);
+            elseif typeof(monitor.obj) == Synapses
+                monitor.states[var] = cat(monitor.states[var], monitor.obj.__parameters[var]; dims = 2);
             end
         end
     end
 
-    target;
+    monitor;
 end
 
 @with_kw mutable struct EventMonitor <: SpikeObject
@@ -97,10 +97,10 @@ end
     """
 
     # collect events and log
-    ids::Vector{Int} = collect(1:size(monitor.obj.__eventlog, 1))[monitor.obj.__eventlog[monitor.event]];
+    ids::Vector{Int} = collect(1:length(monitor.obj.__eventlog[monitor.event]))[monitor.obj.__eventlog[monitor.event]];
     append!(monitor.t, t .* ones(size(ids, 1)));
     append!(monitor.i, ids);
 
-    target;
+    monitor;
 end
 

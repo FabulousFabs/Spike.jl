@@ -101,14 +101,15 @@ function LIF(; N::Int = 1, normalised = false)::NeuronGroup
     if normalised == false
         return NeuronGroup(N = N, 
                            eq = :(dv_dt = (.-(v .- E_L) .+ R .* I) ./ 𝜏_m;
-                                  I_t = 25.0 .+ 25.0 .* sin(2*π*t) .* ones(N)),
+                                  dI_dt = -I),
                            method = rk2,
                            events = Dict(:spike => (:(v .> v_th), :(v = v_reset;))),
                            parameters = Dict(:v => -70.5 * ones(N), 
                                              :v_th => -55.0 * ones(N),
                                              :v_reset => -75.5 * ones(N),
                                              :E_L => -70.5 * ones(N), 
-                                             :R => 10.0 * ones(N),
+                                             :R => 1000.0 * ones(N),
+                                             :I => 0.0 * ones(N),
                                              :𝜏_m => 10.0 * ones(N)));
     end
 

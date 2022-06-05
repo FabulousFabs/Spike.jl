@@ -15,8 +15,9 @@ include("Build.jl");
 @with_kw mutable struct Model
     """
     Main structure for creating a model. Note that, for convenience, this structure does
-    not have to be created yourself. If you can provide adeqaute scope, Spike::Model::run(; ...)
-    and have called Spike::Magic::cast_magic(), the model will be magically created for you.
+    not have to be created yourself. If you can provide adeqaute scope and have called
+    Spike::Magic::cast_magic() to start the scope, Spike::Model::run(; ...) will magically 
+    created the model for you (and return it after simulation).
 
     INPUTS:
         Neurons::Dict{Symbol, NeuronGroup}          -   All neuron groups in the model. (default = Dict())
@@ -86,7 +87,7 @@ end
         status(model, "Simulating...\t[" * progress * "]  \t" * string(round((t / T)*100)) * "%\t", e = "\r");
 
         for op::Pair{Symbol, Operation} ∈ model.Operations
-            step(getproperty(model.Operations, op[1]); t = t, dt = dt, cycle = "pre");
+            step(model.Operations[op[1]]; t = t, dt = dt, cycle = "pre");
         end
 
         for tok::Symbol ∈ fieldnames(Model)
@@ -102,7 +103,7 @@ end
         end
 
         for op::Pair{Symbol, Operation} ∈ model.Operations
-            step(getproperty(model.Operations, op[1]); t = t, dt = dt, cycle = "post");
+            step(model.Operations[op[1]]; t = t, dt = dt, cycle = "post");
         end
     end
 

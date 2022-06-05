@@ -5,11 +5,12 @@ More concretely, this allows for model specifications such as:
 ```
     using Spike;
 
-    cast_magic()
+    cast_magic();
 
-    population = LIF(; N = 100)
+    population = LIF(N = 100);
+    ...
 
-    run(; T = 1000)
+    model = run(; T = 1.0, dt = 1e-3);
 ```
 
 whereby the model is collected from the global Main scope before being built and executed.

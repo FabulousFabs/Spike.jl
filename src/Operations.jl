@@ -42,13 +42,13 @@ function step(operation::Operation; dt::Float64, t::Float64, cycle::String)::Ope
     """
 
     # run operation if in cycle and timing
-    if cycle == target.cycle
-        if target.__last + target.every <= t
-            target.op()
-            target.__last = t;
+    if cycle == operation.cycle
+        if operation.__last + operation.every <= t
+            operation.op()
+            operation.__last = t;
         end
     end
 
-    target;
+    operation;
 end
 

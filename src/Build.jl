@@ -184,6 +184,17 @@ function build(target::StateMonitor)::StateMonitor
     # check timing
     @assert target.every >= 1e-3 "Spike::Build::build(::StateMonitor): Received unsupported value for every = `" * string(target.every) * "`. Allowed >= 1e-3.";
 
+    # initialise
+    for var::Symbol ∈ target.vars
+        N::Int = 0;
+        if typeof(target.obj) == NeuronGroup
+            N = target.obj.N;
+        else
+            N = target.obj.__N;
+        end
+        target.states[var] = Array{Float64}(undef, N, 0);
+    end
+
     # finalise
     target.__built = true;
     target;
