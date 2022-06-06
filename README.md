@@ -1,4 +1,4 @@
-# <img src="./docs/src/assets/logo.png" alt="" width=90 /> Spike.jl
+# <img src="./docs/src/assets/logo.png" alt="" width=50 /> Spike.jl
 
 [![Build Status](https://github.com/FabulousFabs/Spike.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/FabulousFabs/Spike.jl/actions/workflows/CI.yml?query=branch%3Amain)&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;**[DOCUMENTATION](https://fabulousfabs.github.io/Spike.jl.Docs/)**
 
