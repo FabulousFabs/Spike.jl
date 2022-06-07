@@ -28,11 +28,11 @@ Main structure for creating synapses between NeuronGroups. Note that both `cond:
         __diffeqs::Dict{Symbol, Expr}                   -   (Internal) Built differential equations. (default = Dict())
         __preeqs::Dict{Symbol, Dict{Symbol, Expr}}      -   (Internal) Built presynaptic event equations. (default = Dict())
         __posteqs::Dict{Symbol, Dict{Symbol, Expr}}     -   (Internal) Built postsynaptic event equations. (default = Dict())
-        __M_pre::Vector{Vector{Int}}                    -   (Internal) Built forwards connectivity matrix. (default = Dict())
-        __M_post::Vector{Vector{Int}}                   -   (Internal) Built backwards connectivity matrix. (default = Dict())
-        __N::Int                                        -   (Internal) Built number of synapses.
-        __i::Vector{Int}                                -   (Internal) Built i-th index of every synapse, indicating presynaptic neuron.
-        __j::Vector{Int}                                -   (Internal) Built j-th index of every synapse, indicating postsynaptic neuron.
+        M_pre::Vector{Vector{Int}}                      -   (Internal) Built forwards connectivity matrix. (default = Dict())
+        M_post::Vector{Vector{Int}}                     -   (Internal) Built backwards connectivity matrix. (default = Dict())
+        N::Int                                          -   (Internal) Built number of synapses.
+        i::Vector{Int}                                  -   (Internal) Built i-th index of every synapse, indicating presynaptic neuron.
+        j::Vector{Int}                                  -   (Internal) Built j-th index of every synapse, indicating postsynaptic neuron.
 """
 @with_kw mutable struct Synapses <: SpikeObject
     pre::NeuronGroup
@@ -40,21 +40,20 @@ Main structure for creating synapses between NeuronGroups. Note that both `cond:
     cond::Expr = :()
     prob::Float64 = 1.0
     eq::Expr = :()
-    method::Function = rk2
+    method::Function = euler
     parameters::Dict{Symbol, Any} = Dict()
     on_pre::Dict{Symbol, Expr} = Dict()
     on_post::Dict{Symbol, Expr} = Dict()
-
     __built::Bool = false
     __normeqs::Dict{Symbol, Expr} = Dict()
     __diffeqs::Dict{Symbol, Expr} = Dict()
     __preeqs::Dict{Symbol, Dict{Symbol, Expr}} = Dict()
     __posteqs::Dict{Symbol, Dict{Symbol, Expr}} = Dict()
-    __M_pre::Vector{Vector{Int}} = Vector[Int[]];
-    __M_post::Vector{Vector{Int}} = Vector[Int[]];
-    __N::Int = 0;
-    __i::Vector{Int} = Int[];
-    __j::Vector{Int} = Int[];
+    M_pre::Vector{Vector{Int}} = Vector[Int[]]
+    M_post::Vector{Vector{Int}} = Vector[Int[]]
+    N::Int = 0
+    i::Vector{Int} = Int[]
+    j::Vector{Int} = Int[]
 end
 
 """
@@ -73,11 +72,11 @@ Performs one time step for all equations specified for a group of synapses. Note
 """
 @fastmath function step(synapses::Synapses; dt::Float64, t::Float64)::Synapses
     # update time parameters
-    synapses.parameters[:t] = t;
-    synapses.parameters[:dt] = dt;
+    synapses.parameters[:t] .= t;
+    synapses.parameters[:dt] .= dt;
     
     # update general parameters
-    synapses.parameters[:N] = synapses.__N;
+    synapses.parameters[:N] = synapses.N;
     synapses.parameters[:pre_N] = synapses.pre.N;
     synapses.parameters[:post_N] = synapses.post.N;
 
@@ -85,9 +84,9 @@ Performs one time step for all equations specified for a group of synapses. Note
     for par_pre::Pair{Symbol, Any} ∈ synapses.pre.parameters
         alias::Symbol = Meta.parse("pre_" * string(par_pre[1]));
         if isa(par_pre[2], Vector)
-            synapses.parameters[alias] = par_pre[2][synapses.__i];
+            synapses.parameters[alias] = par_pre[2][synapses.i];
         elseif isa(par_pre[2], Number)
-            synapses.parameters[alias] = par_pre[2] .* ones(synapses.__N);
+            synapses.parameters[alias] = par_pre[2] .* ones(synapses.N);
         else
             @assert false "\nSpike::Synapses::step():\nCould not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_pre[2])) * "`. Allowed = [Vector, Number].";
         end
@@ -97,9 +96,9 @@ Performs one time step for all equations specified for a group of synapses. Note
     for par_post::Pair{Symbol, Any} ∈ synapses.post.parameters
         alias::Symbol = Meta.parse("post_" * string(par_post[1]));
         if isa(par_post[2], Vector)
-            synapses.parameters[alias] = par_post[2][synapses.__j];
+            synapses.parameters[alias] = par_post[2][synapses.j];
         elseif isa(par_post[2], Number)
-            synapses.parameters[alias] = par_post[2] .* ones(synapses.__N);
+            synapses.parameters[alias] = par_post[2] .* ones(synapses.N);
         else
             @assert false "\nSpike::Synapses::step():\nCould not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`. Allowed = [Vector, Number].";
         end
@@ -124,11 +123,11 @@ Performs one time step for all equations specified for a group of synapses. Note
         presyn_mask::Vector{Bool} = synapses.pre.__eventlog[preeq[1]];
         presyn_indx::Vector{Int} = collect(1:synapses.pre.N)[presyn_mask];
 
-        synapse_indx::Vector{Int} = findall(∈(presyn_indx), synapses.__i);
-        synapse_mask::Vector{Bool} = falses(synapses.__N);
+        synapse_indx::Vector{Int} = findall(∈(presyn_indx), synapses.i);
+        synapse_mask::Vector{Bool} = falses(synapses.N);
         synapse_mask[synapse_indx] .= true;
 
-        possyn_indx::Vector{Int} = synapses.__j[synapse_indx];
+        possyn_indx::Vector{Int} = synapses.j[synapse_indx];
         possyn_mask::Vector{Bool} = falses(synapses.post.N);
         possyn_mask[possyn_indx] .= true;
 
@@ -139,12 +138,12 @@ Performs one time step for all equations specified for a group of synapses. Note
 
             if length(target_str) > 5 && target_str[1:5] == "post_"
                 internal_sym = Symbol(target_str[6:end]);
-                synapses.post.parameters[internal_sym][unique!(possyn_indx)] .+= [sum(synapse_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
+                synapses.post.parameters[internal_sym][unique(possyn_indx)] .+= [sum(synapse_update[synapses.j .== post_indx]) for post_indx ∈ unique(possyn_indx)];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.j[synapse_mask]];
             elseif length(target_str) > 4 && target_str[1:4] == "pre_"
                 internal_sym = Symbol(target_str[5:end]);
-                synapses.pre.parameters[internal_sym][unique!(presyn_indx)] .+= [sum(synapses_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
+                synapses.pre.parameters[internal_sym][unique(presyn_indx)] .+= [sum(synapses_update[synapses.j .== post_indx]) for post_indx ∈ unique(possyn_indx)];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.i[synapse_mask]];
             else
                 internal_sym = eq[1];
                 synapses.parameters[eq[1]][synapse_mask] .+= synapse_update;
@@ -161,11 +160,11 @@ Performs one time step for all equations specified for a group of synapses. Note
         possyn_mask::Vector{Bool} = synapses.post.__eventlog[posteq[1]];
         possyn_indx::Vector{Int} = collect(1:synapses.post.N)[possyn_mask];
 
-        synapse_indx::Vector{Int} = findall(∈(possyn_indx), synapses.__j);
-        synapse_mask::Vector{Bool} = falses(synapses.__N);
+        synapse_indx::Vector{Int} = findall(∈(possyn_indx), synapses.j);
+        synapse_mask::Vector{Bool} = falses(synapses.N);
         synapse_mask[synapse_indx] .= true;
 
-        presyn_indx::Vector{Int} = synapses.__i[synapse_indx];
+        presyn_indx::Vector{Int} = synapses.i[synapse_indx];
         presyn_mask::Vector{Bool} = falses(synapses.pre.N);
         presyn_mask[presyn_indx] .= true;
         
@@ -176,12 +175,12 @@ Performs one time step for all equations specified for a group of synapses. Note
 
             if length(target_str) > 5 && target_str[1:5] == "post_"
                 internal_sym = Symbol(target_str[6:end]);
-                synapses.post.parameters[internal_sym][unique!(possyn_indx)] .+= [sum(synapse_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
+                synapses.post.parameters[internal_sym][unique!(possyn_indx)] .+= [sum(synapse_update[synapses.j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.j[synapse_mask]];
             elseif length(target_str) > 4 && target_str[1:4] == "pre_"
                 internal_sym = Symbol(target_str[5:end]);
-                synapses.pre.parameters[internal_sym][unique!(presyn_indx)] .+= [sum(synapses_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
+                synapses.pre.parameters[internal_sym][unique!(presyn_indx)] .+= [sum(synapses_update[synapses.j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.i[synapse_mask]];
             else
                 internal_sym = eq[1];
                 synapses.parameters[eq[1]][synapse_mask] .+= synapse_update;

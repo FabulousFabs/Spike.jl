@@ -28,9 +28,9 @@ Main structure for creating neurons. Note that, for convenience, you can often s
 @with_kw mutable struct NeuronGroup <: SpikeObject
     N::Int
     eq::Expr
-    method::Function = rk2
-    parameters::Dict{Symbol, Any}
-    events::Dict{Symbol, Tuple{Expr, Expr}}
+    method::Function = euler
+    parameters::Dict{Symbol, Any} = Dict()
+    events::Dict{Symbol, Tuple{Expr, Expr}} = Dict()
 
     __built::Bool = false
     __normeqs::Dict{Symbol, Expr} = Dict()

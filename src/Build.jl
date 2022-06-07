@@ -26,7 +26,11 @@ function collect_and_test!(symbols::Vector{Symbol}, dict::Dict{Symbol, Expr})
     for eq::Pair{Symbol, Expr} ∈ dict
         push!(symbols, eq[1]);
         eq[2] |> push_symbols!(symbols);
-        test_expression(; expr = eq[2], parameters = dummy_parameters(unique!(symbols)));
+        dummies::Dict{Symbol, Any} = dummy_parameters(unique!(symbols));
+        if haskey(dummies, :N)
+            dummies[:N] = 2;
+        end
+        test_expression(; expr = eq[2], parameters = dummies);
     end
 end
 
@@ -155,24 +159,24 @@ Builds synapses between two groups of neurons such that their equations can be e
     end
 
     # set final connectivity vectors
-    target.__i, target.__j = (i, j);
+    target.i, target.j = (i, j);
 
     # create empty forwards connectivity vectors
-    target.__M_pre = Vector{Vector{Int}}(undef, target.pre.N);
-    for pre_i::Int ∈ 1:size(target.__M_pre, 1)
-        target.__M_pre[pre_i] = Int[];
+    target.M_pre = Vector{Vector{Int}}(undef, target.pre.N);
+    for pre_i::Int ∈ 1:size(target.M_pre, 1)
+        target.M_pre[pre_i] = Int[];
     end
 
     # create empty backwards connectivity vectors
-    target.__M_post = Vector{Vector{Int}}(undef, target.post.N);
-    for post_i::Int ∈ 1:size(target.__M_post, 1)
-        target.__M_post[post_i] = Int[];
+    target.M_post = Vector{Vector{Int}}(undef, target.post.N);
+    for post_i::Int ∈ 1:size(target.M_post, 1)
+        target.M_post[post_i] = Int[];
     end
     
     # fill matrices
     for ij::Tuple{Int, Int} ∈ zip(i, j)
-        push!(target.__M_pre[ij[1]], ij[2]);
-        push!(target.__M_post[ij[2]], ij[1]);
+        push!(target.M_pre[ij[1]], ij[2]);
+        push!(target.M_post[ij[2]], ij[1]);
     end
 
     # setup new parameters
@@ -181,17 +185,17 @@ Builds synapses between two groups of neurons such that their equations can be e
     # insert pre-specified parameters
     for par::Pair{Symbol, Any} ∈ target.parameters
         if isa(par[2], Function)
-            parameters[par[1]] = par[2](size(target.__i, 1))
+            parameters[par[1]] = par[2](size(target.i, 1))
         elseif isa(par[2], Number)
-            parameters[par[1]] = ones(size(target.__i, 1)) .* par[2];
+            parameters[par[1]] = ones(size(target.i, 1)) .* par[2];
         else
             @assert false "\nSpike::Build::build(::Synapses):\nDetected parameter `" * string(par[1]) * "` of unsupported type `" * string(typeof(par[2])) * "`.";
         end
     end
 
     # setup constant internal parameters
-    target.__N = size(target.__i, 1);
-    parameters[:N] = target.__N;
+    target.N = size(target.i, 1);
+    parameters[:N] = target.N;
     parameters[:pre_N] = target.pre.N;
     parameters[:post_N] = target.post.N;
 
@@ -199,9 +203,9 @@ Builds synapses between two groups of neurons such that their equations can be e
     for par_pre::Pair{Symbol, Any} ∈ target.pre.parameters
         alias::Symbol = Meta.parse("pre_" * string(par_pre[1]));
         if isa(par_pre[2], Vector)
-            parameters[alias] = par_pre[2][target.__i];
+            parameters[alias] = par_pre[2][target.i];
         elseif isa(par_pre[2], Number)
-            parameters[alias] = par_pre[2] .* ones(target.__N);
+            parameters[alias] = par_pre[2] .* ones(target.N);
         else
             @assert false "\nSpike::Build::build(::Synapses):\nCould not broadcast parameter `" * string(alias) * "` of unsuppoted type `" * string(typeof(par_pre[2])) * "`. Allowed = [Vector, Number].";
         end
@@ -211,16 +215,16 @@ Builds synapses between two groups of neurons such that their equations can be e
     for par_post::Pair{Symbol, Any} ∈ target.post.parameters
         alias::Symbol = Meta.parse("post_" * string(par_post[1]));
         if isa(par_post[2], Vector)
-            parameters[alias] = par_post[2][target.__j];
+            parameters[alias] = par_post[2][target.j];
         elseif isa(par_post[2], Number)
-            parameters[alias] = par_post[2] .* ones(target.__N);
+            parameters[alias] = par_post[2] .* ones(target.N);
         else
             @assert false "\nSpike::Build::build(::Synapses):\nCould not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`. Allowed = [Vector, Number].";
         end
     end
 
     # create default parameters if necessary
-    target.parameters = defaults_for_missing(symbols, parameters, target.__N);
+    target.parameters = defaults_for_missing(symbols, parameters, target.N);
 
     # finalise
     target.__built = true;
@@ -280,12 +284,7 @@ function build(target::StateMonitor)::StateMonitor
 
     # initialise
     for var::Symbol ∈ target.vars
-        N::Int = 0;
-        if typeof(target.obj) == NeuronGroup
-            N = target.obj.N;
-        else
-            N = target.obj.__N;
-        end
+        N::Int = target.obj.N;
         target.states[var] = Array{Float64}(undef, N, 0);
     end
 

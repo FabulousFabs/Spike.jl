@@ -54,11 +54,7 @@ Performs one time step of the monitor. This is an internal function and should n
         push!(monitor.t, t);
 
         for var::Symbol ∈ monitor.vars
-            if typeof(monitor.obj) == NeuronGroup
-                monitor.states[var] = cat(monitor.states[var], monitor.obj.parameters[var]; dims = 2);
-            elseif typeof(monitor.obj) == Synapses
-                monitor.states[var] = cat(monitor.states[var], monitor.obj.__parameters[var]; dims = 2);
-            end
+            monitor.states[var] = cat(monitor.states[var], monitor.obj.parameters[var]; dims = 2);
         end
     end
 
@@ -79,7 +75,7 @@ Main structure for monitoring events.
 """
 @with_kw mutable struct EventMonitor <: SpikeObject
     obj::NeuronGroup
-    event::Symbol = :spike
+    event::Symbol
 
     t::Vector{Float64} = Float64[];
     i::Vector{Int} = Int[];

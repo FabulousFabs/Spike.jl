@@ -18,6 +18,7 @@ export Model, run;
 export NeuronGroup, LIF;
 export Synapses;
 export Operation;
+export build;
 export StateMonitor, EventMonitor;
 export rk2, euler, heun;
 
