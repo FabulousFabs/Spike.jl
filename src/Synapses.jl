@@ -24,7 +24,6 @@ Main structure for creating synapses between NeuronGroups. Note that both `cond:
         on_pre::Dict{Symbol, Expr}                      -   Hooks into presynaptic events and their effects (e.g., Dict(:spike => :(post_I = post_I .+ w;))).
         on_post::Dict{Symbol, Expr}                     -   Hooks into postsynaptic events and their effects (e.g., Dict(:spike => :(pre_f_t_f = t;))).
         __built::Bool                                   -   (Internal) Have these synapses been built? (default = false)
-        __parameters::Dict{Symbol, Any}                 -   (Internal) Full parameters after building model. (default = Dict())
         __normeqs::Dict{Symbol, Expr}                   -   (Internal) Built equations. (default = Dict())
         __diffeqs::Dict{Symbol, Expr}                   -   (Internal) Built differential equations. (default = Dict())
         __preeqs::Dict{Symbol, Dict{Symbol, Expr}}      -   (Internal) Built presynaptic event equations. (default = Dict())
@@ -47,7 +46,6 @@ Main structure for creating synapses between NeuronGroups. Note that both `cond:
     on_post::Dict{Symbol, Expr} = Dict()
 
     __built::Bool = false
-    __parameters::Dict{Symbol, Any} = Dict()
     __normeqs::Dict{Symbol, Expr} = Dict()
     __diffeqs::Dict{Symbol, Expr} = Dict()
     __preeqs::Dict{Symbol, Dict{Symbol, Expr}} = Dict()
@@ -75,21 +73,21 @@ Performs one time step for all equations specified for a group of synapses. Note
 """
 @fastmath function step(synapses::Synapses; dt::Float64, t::Float64)::Synapses
     # update time parameters
-    synapses.__parameters[:t] = t;
-    synapses.__parameters[:dt] = dt;
+    synapses.parameters[:t] = t;
+    synapses.parameters[:dt] = dt;
     
     # update general parameters
-    synapses.__parameters[:N] = synapses.__N;
-    synapses.__parameters[:pre_N] = synapses.pre.N;
-    synapses.__parameters[:post_N] = synapses.post.N;
+    synapses.parameters[:N] = synapses.__N;
+    synapses.parameters[:pre_N] = synapses.pre.N;
+    synapses.parameters[:post_N] = synapses.post.N;
 
     # make renamed presynaptic parameters available
     for par_pre::Pair{Symbol, Any} ∈ synapses.pre.parameters
         alias::Symbol = Meta.parse("pre_" * string(par_pre[1]));
         if isa(par_pre[2], Vector)
-            synapses.__parameters[alias] = par_pre[2][synapses.__i];
+            synapses.parameters[alias] = par_pre[2][synapses.__i];
         elseif isa(par_pre[2], Number)
-            synapses.__parameters[alias] = par_pre[2] .* ones(synapses.__N);
+            synapses.parameters[alias] = par_pre[2] .* ones(synapses.__N);
         else
             @assert false "Spike::Synapses::step(): Could not broadcast parameter `" * string(alias) * "` of unsuppoted type `" * string(typeof(par_pre[2])) * "`.";
         end
@@ -99,9 +97,9 @@ Performs one time step for all equations specified for a group of synapses. Note
     for par_post::Pair{Symbol, Any} ∈ synapses.post.parameters
         alias::Symbol = Meta.parse("post_" * string(par_post[1]));
         if isa(par_post[2], Vector)
-            synapses.__parameters[alias] = par_post[2][synapses.__j];
+            synapses.parameters[alias] = par_post[2][synapses.__j];
         elseif isa(par_post[2], Number)
-            synapses.__parameters[alias] = par_post[2] .* ones(synapses.__N);
+            synapses.parameters[alias] = par_post[2] .* ones(synapses.__N);
         else
             @assert false "Spike::Synapses::step(): Could not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`.";
         end
@@ -109,12 +107,12 @@ Performs one time step for all equations specified for a group of synapses. Note
 
     # solve normal equations
     for eq::Pair{Symbol, Expr} ∈ synapses.__normeqs
-        synapses.__parameters[eq[1]] = eval(interpolate_from_dict(eq[2], synapses.__parameters));
+        synapses.parameters[eq[1]] = eval(interpolate_from_dict(eq[2], synapses.parameters));
     end
 
     # solve differential equations
     for eq::Pair{Symbol, Expr} ∈ synapses.__diffeqs
-        synapses.__parameters[eq[1]] = synapses.method(sym = eq[1], eq = eq[2], par = synapses.__parameters, dt = dt, t = t);
+        synapses.parameters[eq[1]] = synapses.method(sym = eq[1], eq = eq[2], par = synapses.parameters, dt = dt, t = t);
     end
 
     # evaluate pre-synaptic events
@@ -135,21 +133,21 @@ Performs one time step for all equations specified for a group of synapses. Note
         possyn_mask[possyn_indx] .= true;
 
         for eq::Pair{Symbol, Expr} ∈ preeq[2]
-            synapse_update::Vector{Float64} = synapse_mask .* (eval(interpolate_from_dict(eq[2], synapses.__parameters)) .- synapses.__parameters[eq[1]]);
+            synapse_update::Vector{Float64} = synapse_mask .* (eval(interpolate_from_dict(eq[2], synapses.parameters)) .- synapses.parameters[eq[1]]);
             target_str::String = String(eq[1]);
             internal_sym::Symbol = Symbol();
 
             if length(target_str) > 5 && target_str[1:5] == "post_"
                 internal_sym = Symbol(target_str[6:end]);
                 synapses.post.parameters[internal_sym][unique!(possyn_indx)] .+= [sum(synapse_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.__parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
             elseif length(target_str) > 4 && target_str[1:4] == "pre_"
                 internal_sym = Symbol(target_str[5:end]);
                 synapses.pre.parameters[internal_sym][unique!(presyn_indx)] .+= [sum(synapses_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.__parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
             else
                 internal_sym = eq[1];
-                synapses.__parameters[eq[1]][synapse_mask] .+= synapse_update;
+                synapses.parameters[eq[1]][synapse_mask] .+= synapse_update;
             end
         end
     end
@@ -172,21 +170,21 @@ Performs one time step for all equations specified for a group of synapses. Note
         presyn_mask[presyn_indx] .= true;
         
         for eq::Pair{Symbol, Expr} ∈ posteq[2]
-            synapse_update::Vector{Float64} = synapse_mask .* (eval(interpolate_from_dict(eq[2], synapses.__parameters)) .- synapses.__parameters[eq[1]]);
+            synapse_update::Vector{Float64} = synapse_mask .* (eval(interpolate_from_dict(eq[2], synapses.parameters)) .- synapses.parameters[eq[1]]);
             target_str::String = String(eq[1]);
             internal_sym::Symbol = Symbol();
 
             if length(target_str) > 5 && target_str[1:5] == "post_"
                 internal_sym = Symbol(target_str[6:end]);
                 synapses.post.parameters[internal_sym][unique!(possyn_indx)] .+= [sum(synapse_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.__parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.post.parameters[internal_sym][synapses.__j[synapse_mask]];
             elseif length(target_str) > 4 && target_str[1:4] == "pre_"
                 internal_sym = Symbol(target_str[5:end]);
                 synapses.pre.parameters[internal_sym][unique!(presyn_indx)] .+= [sum(synapses_update[synapses.__j .== post_indx]) for post_indx ∈ unique!(possyn_indx)];
-                synapses.__parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
+                synapses.parameters[eq[1]][synapse_mask] .= synapses.pre.parameters[internal_sym][synapses.__i[synapse_mask]];
             else
                 internal_sym = eq[1];
-                synapses.__parameters[eq[1]][synapse_mask] .+= synapse_update;
+                synapses.parameters[eq[1]][synapse_mask] .+= synapse_update;
             end
         end
     end

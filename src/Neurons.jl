@@ -6,6 +6,7 @@ at runtime, and presets of typically used neurons.
 using Parameters;
 
 include("Magic.jl");
+include("Solvers.jl");
 
 """
     NeuronGroup <: SpikeObject
@@ -27,7 +28,7 @@ Main structure for creating neurons. Note that, for convenience, you can often s
 @with_kw mutable struct NeuronGroup <: SpikeObject
     N::Int
     eq::Expr
-    method::Function
+    method::Function = rk2
     parameters::Dict{Symbol, Any}
     events::Dict{Symbol, Tuple{Expr, Expr}}
 

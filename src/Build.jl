@@ -13,6 +13,50 @@ include("Monitors.jl");
 include("Expressions.jl");
 
 """
+    collect_and_test!(symbols::Vector{Symbol},
+                      dict::Dict{Symbol, Expr})
+
+Traverses a dictionary of symbol => expression pairs, collects symbols into references object and tests equations with dummy parameters.
+
+    INPUTS:
+        symbols::Vector{Symbol}     -   Referenced list of symbols (will be updated!).
+        dict::Dict{Symbol, Expr}    -   Dictionary of symbols and equations.
+"""
+function collect_and_test!(symbols::Vector{Symbol}, dict::Dict{Symbol, Expr})
+    for eq::Pair{Symbol, Expr} ∈ dict
+        push!(symbols, eq[1]);
+        eq[2] |> push_symbols!(symbols);
+        test_expression(; expr = eq[2], parameters = dummy_parameters(unique!(symbols)));
+    end
+end
+
+"""
+    defaults_for_missing(required::Vector{Symbol}, 
+                         parameters::Dict{Symbol, Any}; 
+                         default::Float64 = 0.0)::Dict{Symbol, Any}
+
+In-paints missing required symbols in a dictionary with a default value.
+
+    INPUTS:
+        required::Vector{Symbol}        -   Required symbols (keys).
+        parameters::Dict{Symbol, Any}   -   Parameter dictionary.
+        N::Int                          -   Number of values required.
+        default::Float64                -   Value to insert.
+    
+    OUTPUTS:
+        parameters::Dict{Symbol, Any}   -   Updated parameter dictionary.
+"""
+function defaults_for_missing(required::Vector{Symbol}, parameters::Dict{Symbol, Any}, N::Int; default::Float64 = 0.0)::Dict{Symbol, Any}
+    for required_symbol::Symbol ∈ required
+        if !haskey(parameters, required_symbol)
+            parameters[required_symbol] = ones(N) .* default;
+        end
+    end
+
+    parameters;
+end
+
+"""
     build(target::NeuronGroup)::NeuronGroup
 
 Builds a group of neurons such that their expressions may be evaluated more directly. Also performs safety checks. This is an internal functino and should not be called manually.
@@ -29,13 +73,22 @@ Builds a group of neurons such that their expressions may be evaluated more dire
         return target;
     end
 
+    # standard parameters
+    symbols::Vector{Symbol} = Symbol[:N, :dt, :t];
+
     # build internal state expressions
     target.__normeqs, target.__diffeqs = categorise_subexpressions(target.eq);
+    collect_and_test!(symbols, merge(target.__normeqs, target.__diffeqs));
 
     # build internal event expressions
     for event::Pair{Symbol, Tuple{Expr, Expr}} ∈ target.events
         target.__eventeqs[event[1]], _ = categorise_subexpressions(event[2][2]);
+        collect_and_test!(symbols, Dict(:N => event[2][1]));
+        collect_and_test!(symbols, target.__eventeqs[event[1]]);
     end
+
+    # create default parameters if necessary
+    target.parameters = defaults_for_missing(symbols, target.parameters, target.N);
 
     # check parameters
     for par::Pair{Symbol, Any} ∈ target.parameters
@@ -64,17 +117,23 @@ Builds synapses between two groups of neurons such that their equations can be e
         return target;
     end
 
+    # standard parameters
+    symbols::Vector{Symbol} = Symbol[:N, :N_pre, :N_post, :dt, :t];
+
     # build internal state equations
     target.__normeqs, target.__diffeqs = categorise_subexpressions(target.eq);
+    collect_and_test!(symbols, merge(target.__normeqs, target.__diffeqs));
 
     # build internal presynaptic event hooks and equations
     for event_pre::Pair{Symbol, Expr} ∈ target.on_pre
         target.__preeqs[event_pre[1]], _ = categorise_subexpressions(event_pre[2]);
+        collect_and_test!(symbols, target.__preeqs[event_pre[1]]);
     end
 
     # build internal postsynaptic event hooks and equations
     for event_post::Pair{Symbol, Expr} ∈ target.on_post
         target.__posteqs[event_post[1]], _ = categorise_subexpressions(event_post[2]);
+        collect_and_test!(symbols, target.__posteqs[event_post[1]]);
     end
 
     # create full connectivity vectors
@@ -116,12 +175,15 @@ Builds synapses between two groups of neurons such that their equations can be e
         push!(target.__M_post[ij[2]], ij[1]);
     end
 
-    # setup internal parameters from pre-specifications
+    # setup new parameters
+    parameters::Dict{Symbol, Any} = Dict();
+
+    # insert pre-specified parameters
     for par::Pair{Symbol, Any} ∈ target.parameters
         if isa(par[2], Function)
-            target.__parameters[par[1]] = par[2](size(target.__i, 1))
+            parameters[par[1]] = par[2](size(target.__i, 1))
         elseif isa(par[2], Number)
-            target.__parameters[par[1]] = ones(size(target.__i, 1)) .* par[2];
+            parameters[par[1]] = ones(size(target.__i, 1)) .* par[2];
         else
             @assert false "Spike::Build::build(::Synapses): Detected parameter `" * string(par[1]) * "` of unsupported type `" * string(typeof(par[2])) * "`.";
         end
@@ -129,17 +191,17 @@ Builds synapses between two groups of neurons such that their equations can be e
 
     # setup constant internal parameters
     target.__N = size(target.__i, 1);
-    target.__parameters[:N] = target.__N;
-    target.__parameters[:pre_N] = target.pre.N;
-    target.__parameters[:post_N] = target.post.N;
+    parameters[:N] = target.__N;
+    parameters[:pre_N] = target.pre.N;
+    parameters[:post_N] = target.post.N;
 
     # make renamed presynaptic parameters available
     for par_pre::Pair{Symbol, Any} ∈ target.pre.parameters
         alias::Symbol = Meta.parse("pre_" * string(par_pre[1]));
         if isa(par_pre[2], Vector)
-            target.__parameters[alias] = par_pre[2][target.__i];
+            parameters[alias] = par_pre[2][target.__i];
         elseif isa(par_pre[2], Number)
-            target.__parameters[alias] = par_pre[2] .* ones(target.__N);
+            parameters[alias] = par_pre[2] .* ones(target.__N);
         else
             @assert false "Spike::Build::build(::Synapses): Could not broadcast parameter `" * string(alias) * "` of unsuppoted type `" * string(typeof(par_pre[2])) * "`.";
         end
@@ -149,13 +211,16 @@ Builds synapses between two groups of neurons such that their equations can be e
     for par_post::Pair{Symbol, Any} ∈ target.post.parameters
         alias::Symbol = Meta.parse("post_" * string(par_post[1]));
         if isa(par_post[2], Vector)
-            target.__parameters[alias] = par_post[2][target.__j];
+            parameters[alias] = par_post[2][target.__j];
         elseif isa(par_post[2], Number)
-            target.__parameters[alias] = par_post[2] .* ones(target.__N);
+            parameters[alias] = par_post[2] .* ones(target.__N);
         else
             @assert false "Spike::Build::build(::Synapses): Could not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`.";
         end
     end
+
+    # create default parameters if necessary
+    target.parameters = defaults_for_missing(symbols, parameters, target.__N);
 
     # finalise
     target.__built = true;
