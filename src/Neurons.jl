@@ -16,9 +16,9 @@ Main structure for creating neurons. Note that, for convenience, you can often s
     INPUTS:
         N::Int                                          -   Number of neurons in group
         eq::Expr                                        -   Equation determining the behaviour of neurons in this group.
-        method::Function                                -   Function to use for solving differential equations. See Spike::Solvers.
-        parameters::Dict{Symbol, Any}                   -   All parameters for all neurons.
-        events::Dict{Symbol, Tuple{Expr, Expr}}         -   Event specifications in the form of events = Dict(:name => (:(condition), :(effect;))).
+        method::Function                                -   Function to use for solving differential equations. See Spike::Solvers. (default = euler)
+        parameters::Dict{Symbol, Any}                   -   All parameters for all neurons. (default = Dict())
+        events::Dict{Symbol, Tuple{Expr, Expr}}         -   Event specifications in the form of events = Dict(:name => (:(condition), :(effect;))). (default = Dict())
         __built::Bool                                   -   (Internal) Has this model been built? (default = false)
         __normeqs::Dict{Symbol, Expr}                   -   (Internal) Built equations. (default = Dict())
         __diffeqs::Dict{Symbol, Expr}                   -   (Internal) Built differential equations. (default = Dict())

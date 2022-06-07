@@ -285,6 +285,7 @@ function build(target::StateMonitor)::StateMonitor
     # initialise
     for var::Symbol ∈ target.vars
         N::Int = target.obj.N;
+        target.t = Float64[];
         target.states[var] = Array{Float64}(undef, N, 0);
     end
 
@@ -309,6 +310,10 @@ function build(target::EventMonitor)::EventMonitor
     if target.__built == true
         return target;
     end
+
+    # initialise
+    target.t = Float64[];
+    target.i = Int[];
 
     # finalise
     target.__built = true;

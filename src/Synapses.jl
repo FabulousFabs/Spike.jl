@@ -18,21 +18,21 @@ Main structure for creating synapses between NeuronGroups. Note that both `cond:
         post::NeuronGroup                               -   Postsynaptic neuron group.
         cond::Expr                                      -   Conditional expression for building connectivity matrix. (default = :())
         prob::Float64                                   -   Probability of realising a potential entry in connectivity matrix. (default = 1.0)
-        eq::Expr                                        -   Equation determining the behaviour of the synapses.
-        method::Function                                -   Function to use for solving differential equations. See Spike::Solvers.
-        parameters::Dict{Symbol, Any}                   -   Parameter pre-specifications; either func where func(N) is valid or ::Number.
-        on_pre::Dict{Symbol, Expr}                      -   Hooks into presynaptic events and their effects (e.g., Dict(:spike => :(post_I = post_I .+ w;))).
-        on_post::Dict{Symbol, Expr}                     -   Hooks into postsynaptic events and their effects (e.g., Dict(:spike => :(pre_f_t_f = t;))).
+        eq::Expr                                        -   Equation determining the behaviour of the synapses. (default = :())
+        method::Function                                -   Function to use for solving differential equations. See Spike::Solvers. (default = euler)
+        parameters::Dict{Symbol, Any}                   -   Parameter pre-specifications; either func where func(N) is valid or ::Number. (default = Dict())
+        on_pre::Dict{Symbol, Expr}                      -   Hooks into presynaptic events and their effects (e.g., Dict(:spike => :(post_I = post_I .+ w;))). (default = Dict())
+        on_post::Dict{Symbol, Expr}                     -   Hooks into postsynaptic events and their effects (e.g., Dict(:spike => :(pre_f_t_f = t;))). (default = Dict())
         __built::Bool                                   -   (Internal) Have these synapses been built? (default = false)
         __normeqs::Dict{Symbol, Expr}                   -   (Internal) Built equations. (default = Dict())
         __diffeqs::Dict{Symbol, Expr}                   -   (Internal) Built differential equations. (default = Dict())
         __preeqs::Dict{Symbol, Dict{Symbol, Expr}}      -   (Internal) Built presynaptic event equations. (default = Dict())
         __posteqs::Dict{Symbol, Dict{Symbol, Expr}}     -   (Internal) Built postsynaptic event equations. (default = Dict())
-        M_pre::Vector{Vector{Int}}                      -   (Internal) Built forwards connectivity matrix. (default = Dict())
-        M_post::Vector{Vector{Int}}                     -   (Internal) Built backwards connectivity matrix. (default = Dict())
-        N::Int                                          -   (Internal) Built number of synapses.
-        i::Vector{Int}                                  -   (Internal) Built i-th index of every synapse, indicating presynaptic neuron.
-        j::Vector{Int}                                  -   (Internal) Built j-th index of every synapse, indicating postsynaptic neuron.
+        M_pre::Vector{Vector{Int}}                      -   (Internal) Built forwards connectivity matrix. (default = Vector[Int[]])
+        M_post::Vector{Vector{Int}}                     -   (Internal) Built backwards connectivity matrix. (default = Vector[Int[]])
+        N::Int                                          -   (Internal) Built number of synapses. (default = 0)
+        i::Vector{Int}                                  -   (Internal) Built i-th index of every synapse, indicating presynaptic neuron. (default = Int[])
+        j::Vector{Int}                                  -   (Internal) Built j-th index of every synapse, indicating postsynaptic neuron. (default = Int[])
 """
 @with_kw mutable struct Synapses <: SpikeObject
     pre::NeuronGroup

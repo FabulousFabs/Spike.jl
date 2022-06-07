@@ -89,8 +89,6 @@ function create_magic_model(; magic_obj::DataType = SpikeObject, magic_tar::Modu
 
     @assert __cast_magic == true "\nSpike::Magic::build_magic():\nReceived call while no initial magic was cast.";
 
-    __cast_magic = false;
-
     model::Model = Model();
     magic_toks::Vector{Symbol} = Symbol[];
     magic_typs::Vector{DataType} = DataType[];

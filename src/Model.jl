@@ -138,6 +138,11 @@ Main entry point for simulations.
         end
     end
 
+    # flag monitors for re-building
+    for monitor::Pair{Symbol, Any} ∈ merge(model.StateMonitors, model.EventMonitors)
+        monitor[2].__built = false;
+    end
+
     status(model, "\nDone.");
 
     model;
