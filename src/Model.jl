@@ -55,6 +55,45 @@ function status(model::Model, status::String; e::String = "\n")
 end
 
 """
+    build(model::Model)::Model
+
+Builds all model components and does some final checks (e.g., are all event hooks specified, etc.). This is an internal function and should not be called manually.
+
+    INPUTS:
+        model::Model    -   The model to build.
+    
+    OUTPUTS:
+        model::Model    -   Built model.
+"""
+function build(model::Model)::Model
+    # build the components
+    for tok::Symbol ∈ fieldnames(Model)
+        if isa(getproperty(model, tok), Dict)
+            for obj::Pair{Any, Any} ∈ getproperty(model, tok)
+                if typeof(obj[1]) != Symbol || !isa(obj[2], SpikeObject)
+                    continue;
+                end
+
+                getproperty(model, tok)[obj[1]] = build(getproperty(model, tok)[obj[1]]);
+            end
+        end
+    end
+
+    # check event hooks
+    for syn::Pair{Symbol, Synapses} ∈ model.Synapses
+        for on_pre::Pair{Symbol, Expr} ∈ syn[2].on_pre
+            @assert haskey(syn[2].pre.events, on_pre[1]) "\nSpike::Model::build(::Model):\nEvent hook `:" * string(on_pre[1]) * "` in synapses `:" * string(syn[1]) * "` references presynaptic event not specified in presynaptic group.";
+        end
+
+        for on_post::Pair{Symbol, Expr} ∈ syn[2].on_post
+            @assert haskey(syn[2].post.events, on_post[1]) "\nSpike::Model::build(::Model):\nEvent hook `:" * string(on_post[1]) * "` in synapses `:" * string(syn[1]) * "` references postsynaptic event not specified in postsynaptic group.";
+        end
+    end
+    
+    model;
+end
+
+"""
     run(model::Model; T::Float64, 
                       dt::Float64 = 1e-3)::Model
 
@@ -69,20 +108,9 @@ Main entry point for simulations.
         model::Model    -   Self
 """
 @fastmath function run(model::Model; T::Float64, dt::Float64 = 1e-3)::Model
-    # build the model
+    # build model
     status(model, "Building model components...");
-
-    for tok::Symbol ∈ fieldnames(Model)
-        if isa(getproperty(model, tok), Dict)
-            for obj::Pair{Any, Any} ∈ getproperty(model, tok)
-                if typeof(obj[1]) != Symbol || !isa(obj[2], SpikeObject)
-                    continue;
-                end
-
-                getproperty(model, tok)[obj[1]] = build(getproperty(model, tok)[obj[1]]);
-            end
-        end
-    end
+    model = build(model); # note that build() references Spike::Model::build() here.
 
     # run a simulation
     for t::Float64 ∈ collect(0.0:dt:T)

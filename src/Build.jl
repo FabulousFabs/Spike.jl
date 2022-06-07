@@ -59,7 +59,7 @@ end
 """
     build(target::NeuronGroup)::NeuronGroup
 
-Builds a group of neurons such that their expressions may be evaluated more directly. Also performs safety checks. This is an internal functino and should not be called manually.
+Builds a group of neurons such that their expressions may be evaluated more directly. Also performs safety checks. This is an internal function and should not be called manually.
 
     INPUTS:
         target::NeuronGroup     -   Group of neurons to build.
@@ -92,7 +92,7 @@ Builds a group of neurons such that their expressions may be evaluated more dire
 
     # check parameters
     for par::Pair{Symbol, Any} ∈ target.parameters
-        @assert size(par[2], 1) ∈ [1, target.N] "Spike::Build::build(::NeuronGroup): Detected parameter `" * string(par[1]) * "` with first dimension not in [1, " * string(target.N) * "].";
+        @assert size(par[2], 1) ∈ [1, target.N] "\nSpike::Build::build(::NeuronGroup):\nDetected parameter `" * string(par[1]) * "` with first dimension not in [1, " * string(target.N) * "].";
     end
 
     # finalise
@@ -185,7 +185,7 @@ Builds synapses between two groups of neurons such that their equations can be e
         elseif isa(par[2], Number)
             parameters[par[1]] = ones(size(target.__i, 1)) .* par[2];
         else
-            @assert false "Spike::Build::build(::Synapses): Detected parameter `" * string(par[1]) * "` of unsupported type `" * string(typeof(par[2])) * "`.";
+            @assert false "\nSpike::Build::build(::Synapses):\nDetected parameter `" * string(par[1]) * "` of unsupported type `" * string(typeof(par[2])) * "`.";
         end
     end
 
@@ -203,7 +203,7 @@ Builds synapses between two groups of neurons such that their equations can be e
         elseif isa(par_pre[2], Number)
             parameters[alias] = par_pre[2] .* ones(target.__N);
         else
-            @assert false "Spike::Build::build(::Synapses): Could not broadcast parameter `" * string(alias) * "` of unsuppoted type `" * string(typeof(par_pre[2])) * "`.";
+            @assert false "\nSpike::Build::build(::Synapses):\nCould not broadcast parameter `" * string(alias) * "` of unsuppoted type `" * string(typeof(par_pre[2])) * "`. Allowed = [Vector, Number].";
         end
     end
 
@@ -215,7 +215,7 @@ Builds synapses between two groups of neurons such that their equations can be e
         elseif isa(par_post[2], Number)
             parameters[alias] = par_post[2] .* ones(target.__N);
         else
-            @assert false "Spike::Build::build(::Synapses): Could not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`.";
+            @assert false "\nSpike::Build::build(::Synapses):\nCould not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`. Allowed = [Vector, Number].";
         end
     end
 
@@ -245,10 +245,10 @@ function build(target::Operation)::Operation
     end
 
     # check cycle
-    @assert target.cycle ∈ ["pre", "post"] "Spike::Build::build(::Operation): Received unsupported value for cycle = `" * target.cycle * ". Allowed = [pre, post].`";
+    @assert target.cycle ∈ ["pre", "post"] "\nSpike::Build::build(::Operation):\nReceived unsupported value for cycle = `" * target.cycle * ". Allowed = [pre, post].`";
 
     # check timing
-    @assert target.every >= 1e-3 "Spike::Build::build(::Operation): Received unsupported value for every = `" * string(target.every) * "`. Allowed >= 1e-3.";
+    @assert target.every >= 1e-3 "\nSpike::Build::build(::Operation):\nReceived unsupported value for every = `" * string(target.every) * "`. Allowed >= 1e-3.";
     
     # finalise
     target.__built = true;
@@ -273,10 +273,10 @@ function build(target::StateMonitor)::StateMonitor
     end
     
     # check object type
-    @assert typeof(target.obj) ∈ [NeuronGroup, Synapses] "Spike::Build::build(::StateMonitor): Received unsupported obj of type `" * string(typeof(target.obj)) * "`. Allowed [NeuronGroup, Synapses].";
+    @assert typeof(target.obj) ∈ [NeuronGroup, Synapses] "\nSpike::Build::build(::StateMonitor):\nReceived unsupported obj of type `" * string(typeof(target.obj)) * "`. Allowed [NeuronGroup, Synapses].";
 
     # check timing
-    @assert target.every >= 1e-3 "Spike::Build::build(::StateMonitor): Received unsupported value for every = `" * string(target.every) * "`. Allowed >= 1e-3.";
+    @assert target.every >= 1e-3 "\nSpike::Build::build(::StateMonitor):\nReceived unsupported value for every = `" * string(target.every) * "`. Allowed >= 1e-3.";
 
     # initialise
     for var::Symbol ∈ target.vars

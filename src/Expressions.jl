@@ -149,7 +149,7 @@ function test_expression(; expr::Expr, parameters::Dict{Symbol, Any})::Bool
         outputs::Vector{Any} = eval(interpolate_from_dict(expr, parameters));
         passes = true;
     catch exc
-        @assert false "Spike::Expressions::test_expressions(): Detected a faulty expression `" * string(expr) * "`. Cannot proceed. Error:\n" * string(exc);
+        @assert false "\nSpike::Expressions::test_expressions():\nDetected a faulty expression `" * string(expr) * "`. Cannot proceed. Error:\n" * string(exc);
     end
 
     passes;

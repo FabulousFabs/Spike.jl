@@ -63,7 +63,7 @@ function collect_magic_objects(; magic_obj::DataType = SpikeObject, magic_tar::M
             end
         catch exc
             if !isa(exc, UndefVarError)
-                @assert false "Spike::Magic::collect_magic_objects(): Encountered an unexpected error of type `" * string(typeof(exc)) * "`:\n" * string(exc);
+                @assert false "\nSpike::Magic::collect_magic_objects():\nEncountered an unexpected error of type `" * string(typeof(exc)) * "`:\n" * string(exc);
             end
         end
     end
@@ -87,7 +87,7 @@ Creates a model from all available magic objects that have corresponding vectori
 function create_magic_model(; magic_obj::DataType = SpikeObject, magic_tar::Module = Main)::Model
     global __cast_magic;
 
-    @assert __cast_magic == true "Spike::Magic::build_magic(): Received call while no initial magic was cast.";
+    @assert __cast_magic == true "\nSpike::Magic::build_magic():\nReceived call while no initial magic was cast.";
 
     __cast_magic = false;
 
@@ -109,8 +109,8 @@ function create_magic_model(; magic_obj::DataType = SpikeObject, magic_tar::Modu
     for obj::Symbol ∈ magic_objs
         indx::Vector{Int} = findall(x -> x == Dict{Symbol, typeof(getproperty(magic_tar, obj))}, magic_typs);
 
-        @assert size(indx, 1) > 0 "Spike::Magic::build_magic(): A magic object was found that has no vector-type correspondence with Spike::Model::Model().";
-        @assert size(indx, 1) == 1 "Spike::Magic::build_magic(): A magic object was found that has multiple vector-type correspondences with Spike::Model::Model().";
+        @assert size(indx, 1) > 0 "\nSpike::Magic::build_magic():\nA magic object was found that has no vector-type correspondence with Spike::Model::Model().";
+        @assert size(indx, 1) == 1 "\nSpike::Magic::build_magic():\nA magic object was found that has multiple vector-type correspondences with Spike::Model::Model().";
 
         getproperty(model, magic_toks[indx[1]])[obj] = getproperty(magic_tar, obj);
     end

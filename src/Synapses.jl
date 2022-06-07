@@ -89,7 +89,7 @@ Performs one time step for all equations specified for a group of synapses. Note
         elseif isa(par_pre[2], Number)
             synapses.parameters[alias] = par_pre[2] .* ones(synapses.__N);
         else
-            @assert false "Spike::Synapses::step(): Could not broadcast parameter `" * string(alias) * "` of unsuppoted type `" * string(typeof(par_pre[2])) * "`.";
+            @assert false "\nSpike::Synapses::step():\nCould not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_pre[2])) * "`. Allowed = [Vector, Number].";
         end
     end
 
@@ -101,7 +101,7 @@ Performs one time step for all equations specified for a group of synapses. Note
         elseif isa(par_post[2], Number)
             synapses.parameters[alias] = par_post[2] .* ones(synapses.__N);
         else
-            @assert false "Spike::Synapses::step(): Could not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`.";
+            @assert false "\nSpike::Synapses::step():\nCould not broadcast parameter `" * string(alias) * "` of unsupported type `" * string(typeof(par_post[2])) * "`. Allowed = [Vector, Number].";
         end
     end
 
